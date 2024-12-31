@@ -1,46 +1,59 @@
-import  { type RemixService } from "@fafa/backend";
-import  { type LinksFunction } from "@remix-run/node";
-import {
-  Links,
-  Meta,
-  Outlet,
-  Scripts,
-  ScrollRestoration,
-} from "@remix-run/react";
+import { type RemixService } from "@fafa/backend";
+import { type LinksFunction, type LoaderFunctionArgs, json } from "@remix-run/node";
+import { Links, Meta, Outlet, Scripts, ScrollRestoration, useRouteLoaderData } from "@remix-run/react";
+import { Footer } from "./components/Footer";
+import { Navbar } from "./components/Navbar";
+// @ts-ignore
+import stylesheet from "./global.css?url";
+import logo from "./routes/_assets/logo-automecanik-dark.png";
+import { getOptionalUser } from "./server/auth.server";
 
-import "./tailwind.css";
+export const links: LinksFunction = () => [
+  { rel: "stylesheet", href: stylesheet },
+];
+
+export const loader = async ({ request,context }: LoaderFunctionArgs) => {
+  const user = await getOptionalUser({ context });
+  return json({ 
+    user
+    });
+};
+
+export const useOptionalUser = () => {
+  const data = useRouteLoaderData<typeof loader>("root");
+
+  if (!data) {
+    throw new Error('Root loader was not run');
+  }
+  return data.user;
+}
 
 declare module "@remix-run/node" {
   interface AppLoadContext {
-    fafa: string;
     remixService: RemixService; // Changed from 'any' to 'RemixService'
+    user: unknown
   }
 }
 
-export const links: LinksFunction = () => [
-  { rel: "preconnect", href: "https://fonts.googleapis.com" },
-  {
-    rel: "preconnect",
-    href: "https://fonts.gstatic.com",
-    crossOrigin: "anonymous",
-  },
-  {
-    rel: "stylesheet",
-    href: "https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap",
-  },
-];
-
 export function Layout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" className="h-full">
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <Meta />
         <Links />
       </head>
-      <body>
-        {children}
+      <body className="h-full bg-gray-100">
+        <div className="min-h-screen flex flex-col">
+          <Navbar logo={logo} />
+          <main className="flex-grow flex flex-col">
+            <div className="flex-grow">
+              {children}
+            </div>
+           </main>
+        </div>
+        <Footer />
         <ScrollRestoration />
         <Scripts />
       </body>
