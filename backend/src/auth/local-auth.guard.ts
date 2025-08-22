@@ -9,24 +9,29 @@ import { AuthGuard } from '@nestjs/passport';
 export class LocalAuthGuard extends AuthGuard('local') {
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<any>();
-    request.body = {};
-    request.body.email = 'automecanik.seo@gmail.com';
-    request.body.password = '123';
+    
+    // Récupérer les données du token depuis la query string
+    const token = request.query.token as string;
+    if (!token) {
+      throw new UnauthorizedException('Token de session manquant');
+    }
 
-    // Add your custom authentication logic here
-    const canBeActivated = (await super.canActivate(context)) as boolean;
-    // for example, call super.logIn(request) to establish a session.
+    // Le token sera validé par LocalStrategy
+    const result = (await super.canActivate(context)) as boolean;
+    
+    // Établir la session utilisateur
     await super.logIn(request);
-    return canBeActivated;
+    
+    return result;
   }
 
-  // @ts-expect-error Fix this later
-  handleRequest(err, user, info) {
+  handleRequest(err: any, user: any, info: any) {
     console.log({ err, user, info });
-    // You can throw an exception based on either "info" or "err" arguments
+    
     if (err || !user) {
-      throw err || new UnauthorizedException('razor');
+      throw err || new UnauthorizedException('Authentification échouée');
     }
+    
     return user;
   }
 }

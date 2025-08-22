@@ -1,5 +1,3 @@
-import { getFormProps, getInputProps, useForm } from '@conform-to/react';
-import { getZodConstraint, parseWithZod } from '@conform-to/zod';
 import {
     json,
     redirect,
@@ -7,132 +5,75 @@ import {
     type LoaderFunctionArgs,
 } from '@remix-run/node';
 import { Form, useActionData, useNavigation } from '@remix-run/react';
-import { z } from 'zod';
-import { Field } from '~/components/forms';
 import { Button } from '~/components/ui/button';
-import { getOptionalUser } from '~/server/auth.server';
 
-export const loader = async ({ context }: LoaderFunctionArgs) => {
-    const user = await getOptionalUser({ context });
-    if (user) {
-        return redirect('/');
-    }
+export const loader = async ({ request }: LoaderFunctionArgs) => {
+    // Pour l'instant, pas de vérification d'utilisateur connecté
     return null;
 };
 
-const RegisterSchema = z.object({
-    email: z
-        .string({
-            required_error: "L'email est obligatoire.",
-        })
-        .email({
-            message: 'Cet email est invalide.',
-        }),
-    firstname: z.string({
-        required_error: 'Le prénom est obligatoire',
-    }),
-    password: z.string({ required_error: 'Le mot de passe est obligatoire.' }),
-});
-
-export const action = async ({ request, context }: ActionFunctionArgs) => {
+export const action = async ({ request }: ActionFunctionArgs) => {
     const formData = await request.formData();
-    const submission = await parseWithZod(formData, {
-        async: true,
-        schema: RegisterSchema.superRefine(async (data, ctx) => {
-            const { email } = data;
+    const email = formData.get('email')?.toString();
+    const firstname = formData.get('firstname')?.toString();
+    const password = formData.get('password')?.toString();
 
-            const existingUser = await context.remixService.auth.checkIfUserExists({
-                email,
-                withPassword: false,
-                password: '',
-            });
-
-            if (existingUser.error === false) {
-                ctx.addIssue({
-                    code: 'custom',
-                    path: ['email'],
-                    message: 'Cet utilisateur existe déjà.',
-                });
-            }
-        }),
-    });
-
-    if (submission.status !== 'success') {
+    if (!email || !firstname || !password) {
         return json(
-            { result: submission.reply() },
-            {
-                status: 400,
-            }
+            { error: 'Tous les champs sont requis' },
+            { status: 400 }
         );
     }
-    const { email, firstname, password } = submission.value;
 
-    const { email: createdUserEmail } =
-        await context.remixService.auth.createUser({
-            email,
-            name: firstname,
-            password,
-        });
-
-    const { sessionToken } = await context.remixService.auth.authenticateUser({
-        email: createdUserEmail,
-    });
-
-    // Connecter l'utilisateur associé à l'email
-    return redirect(`/authenticate?token=${sessionToken}`);
+    // TODO: Implémenter la vraie création de compte
+    console.log('Registration attempt:', { email, firstname });
+    return redirect('/');
 };
 
 export default function Register() {
     const actionData = useActionData<typeof action>();
-    const [form, fields] = useForm({
-        constraint: getZodConstraint(RegisterSchema),
-        onValidate({ formData }) {
-            return parseWithZod(formData, {
-                schema: RegisterSchema,
-            });
-        },
-        lastResult: actionData?.result,
-    });
-
     const isLoading = useNavigation().state === 'submitting';
+    
     return (
         <div className='max-w-[600px] mx-auto'>
             <h1>Création de compte</h1>
-            <Form
-                {...getFormProps(form)}
-                method='POST'
-                reloadDocument
-                className='flex flex-col gap-2'
-            >
-                <Field
-                    inputProps={getInputProps(fields.firstname, {
-                        type: 'text',
-                    })}
-                    labelsProps={{
-                        children: 'Votre prénom',
-                    }}
-                    errors={fields.firstname.errors}
-                />
+            <Form method='POST' className='flex flex-col gap-4'>
+                <div className='flex flex-col gap-2'>
+                    <label htmlFor="firstname">Votre prénom</label>
+                    <input
+                        id="firstname"
+                        name="firstname"
+                        type="text"
+                        required
+                        className='border rounded px-3 py-2'
+                    />
+                </div>
 
-                <Field
-                    inputProps={getInputProps(fields.email, {
-                        type: 'email',
-                    })}
-                    labelsProps={{
-                        children: 'Adresse e-email',
-                    }}
-                    errors={fields.email.errors}
-                />
+                <div className='flex flex-col gap-2'>
+                    <label htmlFor="email">Adresse e-mail</label>
+                    <input
+                        id="email"
+                        name="email"
+                        type="email"
+                        required
+                        className='border rounded px-3 py-2'
+                    />
+                </div>
 
-                <Field
-                    inputProps={getInputProps(fields.password, {
-                        type: 'password',
-                    })}
-                    labelsProps={{
-                        children: 'Mot de passe',
-                    }}
-                    errors={fields.password.errors}
-                />
+                <div className='flex flex-col gap-2'>
+                    <label htmlFor="password">Mot de passe</label>
+                    <input
+                        id="password"
+                        name="password"
+                        type="password"
+                        required
+                        className='border rounded px-3 py-2'
+                    />
+                </div>
+
+                {actionData && 'error' in actionData && (
+                    <div className="text-red-500">{actionData.error}</div>
+                )}
 
                 <Button disabled={isLoading} className='ml-auto' type='submit'>
                     Je créer mon compte

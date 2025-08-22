@@ -4,24 +4,230 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = "postgresql://MASSDOC_owner:Fv4Eang6HxBb@ep-young-haze-a2gss4oh-pooler.eu-central-1.aws.neon.tech/MASSDOC?sslmode=require"
+  url      = env("DATABASE_URL")
 }
 
 model User {
-  id        String    @id @default(cuid())
-  email     String    @unique
-  name      String?
-  password  String
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  sessions  Session[]
+  id            String    @id @default(uuid())
+  email         String    @unique
+  password      String
+  firstName     String?   @map("first_name")
+  lastName      String?   @map("last_name")
+  phone         String?
+  role          String    @default("member")
+  isActive      Boolean   @default(true) @map("is_active")
+  avatarUrl     String?   @map("avatar_url")
+  address       String?
+  city          String?
+  postalCode    String?   @map("postal_code")
+  country       String?   @default("Tunisia")
+  dateOfBirth   DateTime? @map("date_of_birth") @db.Date
+  licenseNumber String?   @unique @map("license_number")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  sessions Session[]
+  owner    Owner?
+  trainer  Trainer?
+  jockey   Jockey?
+  bets     Bet[]
+
+  @@map("users")
 }
 
 model Session {
-  id           String  @id @default(cuid())
-  userId       String
-  ipAddress    String?
-  userAgent    String?
-  sessionToken String  @unique
-  user         User    @relation(fields: [userId], references: [id])
+  id           String    @id @default(uuid())
+  userId       String    @map("user_id")
+  sessionToken String    @unique @map("session_token")
+  ipAddress    String?   @map("ip_address")
+  userAgent    String?   @map("user_agent")
+  expiresAt    DateTime? @map("expires_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model Racecourse {
+  id        String   @id @default(uuid())
+  name      String
+  code      String   @unique
+  location  String?
+  trackType String?  @map("track_type")
+  capacity  Int?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  races Race[]
+
+  @@map("racecourses")
+}
+
+model Owner {
+  id                 String   @id @default(uuid())
+  userId             String?  @unique @map("user_id")
+  stableName         String?  @map("stable_name")
+  colorsDescription  String?  @map("colors_description")
+  registrationNumber String?  @unique @map("registration_number")
+  isActive           Boolean  @default(true) @map("is_active")
+  createdAt          DateTime @default(now()) @map("created_at")
+
+  user        User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+  horses      Horse[]
+  raceEntries RaceEntry[]
+
+  @@map("owners")
+}
+
+model Trainer {
+  id              String   @id @default(uuid())
+  userId          String?  @unique @map("user_id")
+  licenseNumber   String   @unique @map("license_number")
+  yearsExperience Int?     @map("years_experience")
+  specialization  String?
+  stableLocation  String?  @map("stable_location")
+  isActive        Boolean  @default(true) @map("is_active")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  user        User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+  horses      Horse[]
+  raceEntries RaceEntry[]
+
+  @@map("trainers")
+}
+
+model Jockey {
+  id            String   @id @default(uuid())
+  userId        String?  @unique @map("user_id")
+  licenseNumber String   @unique @map("license_number")
+  weightKg      Decimal? @map("weight_kg") @db.Decimal(5, 2)
+  heightCm      Int?     @map("height_cm")
+  wins          Int      @default(0)
+  places        Int      @default(0)
+  shows         Int      @default(0)
+  isActive      Boolean  @default(true) @map("is_active")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  user        User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+  raceEntries RaceEntry[]
+  raceResults RaceResult[]
+
+  @@map("jockeys")
+}
+
+model Horse {
+  id                 String    @id @default(uuid())
+  name               String
+  registrationNumber String    @unique @map("registration_number")
+  dateOfBirth        DateTime  @map("date_of_birth") @db.Date
+  sex                String?
+  color              String?
+  breed              String?   @default("Thoroughbred")
+  sireName           String?   @map("sire_name")
+  damName            String?   @map("dam_name")
+  ownerId            String?   @map("owner_id")
+  trainerId          String?   @map("trainer_id")
+  currentRating      Int?      @map("current_rating")
+  isActive           Boolean   @default(true) @map("is_active")
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  owner       Owner?       @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+  trainer     Trainer?     @relation(fields: [trainerId], references: [id], onDelete: SetNull)
+  raceEntries RaceEntry[]
+  raceResults RaceResult[]
+
+  @@map("horses")
+}
+
+model Race {
+  id           String    @id @default(uuid())
+  raceNumber   Int       @map("race_number")
+  raceDate     DateTime  @map("race_date") @db.Date
+  raceTime     DateTime  @map("race_time") @db.Time
+  racecourseId String    @map("racecourse_id")
+  name         String
+  raceType     String?   @map("race_type")
+  raceClass    String?   @map("race_class")
+  distanceMeters Int     @map("distance_meters")
+  prizeMoney   Decimal?  @map("prize_money") @db.Decimal(10, 2)
+  conditions   String?
+  maxRunners   Int?      @map("max_runners")
+  status       String    @default("scheduled")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  racecourse  Racecourse  @relation(fields: [racecourseId], references: [id], onDelete: Cascade)
+  raceEntries RaceEntry[]
+  raceResults RaceResult[]
+  bets        Bet[]
+
+  @@unique([raceDate, racecourseId, raceNumber])
+  @@map("races")
+}
+
+model RaceEntry {
+  id              String   @id @default(uuid())
+  raceId          String   @map("race_id")
+  horseId         String   @map("horse_id")
+  jockeyId        String?  @map("jockey_id")
+  trainerId       String?  @map("trainer_id")
+  ownerId         String?  @map("owner_id")
+  clothNumber     Int?     @map("cloth_number")
+  drawPosition    Int?     @map("draw_position")
+  weightCarriedKg Decimal? @map("weight_carried_kg") @db.Decimal(5, 2)
+  odds            Decimal? @db.Decimal(6, 2)
+  scratched       Boolean  @default(false)
+  scratchedReason String?  @map("scratched_reason")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  race    Race     @relation(fields: [raceId], references: [id], onDelete: Cascade)
+  horse   Horse    @relation(fields: [horseId], references: [id], onDelete: Cascade)
+  jockey  Jockey?  @relation(fields: [jockeyId], references: [id], onDelete: SetNull)
+  trainer Trainer? @relation(fields: [trainerId], references: [id], onDelete: SetNull)
+  owner   Owner?   @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+
+  @@unique([raceId, horseId])
+  @@map("race_entries")
+}
+
+model RaceResult {
+  id                      String   @id @default(uuid())
+  raceId                  String   @map("race_id")
+  horseId                 String   @map("horse_id")
+  jockeyId                String?  @map("jockey_id")
+  position                Int
+  timeSeconds             Decimal? @map("time_seconds") @db.Decimal(8, 2)
+  lengthsBehind           Decimal? @map("lengths_behind") @db.Decimal(5, 2)
+  startingPrice           Decimal? @map("starting_price") @db.Decimal(6, 2)
+  comments                String?
+  disqualified            Boolean  @default(false)
+  disqualificationReason  String?  @map("disqualification_reason")
+  createdAt               DateTime @default(now()) @map("created_at")
+
+  race   Race    @relation(fields: [raceId], references: [id], onDelete: Cascade)
+  horse  Horse   @relation(fields: [horseId], references: [id], onDelete: Cascade)
+  jockey Jockey? @relation(fields: [jockeyId], references: [id], onDelete: SetNull)
+
+  @@unique([raceId, position])
+  @@map("race_results")
+}
+
+model Bet {
+  id              String    @id @default(uuid())
+  userId          String    @map("user_id")
+  raceId          String    @map("race_id")
+  betType         String    @map("bet_type")
+  selections      Json
+  stakeAmount     Decimal   @map("stake_amount") @db.Decimal(10, 2)
+  potentialReturn Decimal?  @map("potential_return") @db.Decimal(10, 2)
+  status          String    @default("pending")
+  payoutAmount    Decimal?  @map("payout_amount") @db.Decimal(10, 2)
+  placedAt        DateTime  @default(now()) @map("placed_at")
+  settledAt       DateTime? @map("settled_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  race Race @relation(fields: [raceId], references: [id], onDelete: Cascade)
+
+  @@map("bets")
 }

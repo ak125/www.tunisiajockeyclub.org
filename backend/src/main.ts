@@ -1,5 +1,6 @@
+import 'dotenv/config';
 import { getPublicDir, startDevServer } from '@fafa/frontend';
-import { NestFactory } from '@nestjs/core';
+import { NestFactory, Reflector } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { AppModule } from './app.module';
 
@@ -9,6 +10,8 @@ import Redis from 'ioredis';
 import passport from 'passport';
 import { urlencoded, json } from 'body-parser';
 import { HttpExceptionFilter } from './auth/exception.filter';
+import { GlobalAuthGuard } from './auth/global-auth.guard';
+import { PrismaService } from './prisma/prisma.service';
 
 const redisStoreFactory = RedisStore(session);
 
@@ -32,19 +35,30 @@ async function bootstrap() {
       ttl: 86400 * 30,
     });
 
-    app.use(
-      session({
-        store: redisStore,
-        resave: false,
-        saveUninitialized: false,
-        secret: process.env.SESSION_SECRET || '123',
-        cookie: {
-          maxAge: 1000 * 60 * 60 * 24 * 30,
-          sameSite: 'lax',
-          secure: false,
-        },
-      }),
-    );
+    // Session middleware avec sécurité renforcée
+  if (!process.env.SESSION_SECRET || process.env.SESSION_SECRET === '123') {
+    console.error('⚠️  ERREUR CRITIQUE: SESSION_SECRET non configuré ou utilise la valeur par défaut');
+    process.exit(1);
+  }
+
+  const isProduction = process.env.NODE_ENV === 'production';
+  
+  app.use(
+    session({
+      name: 'tjc.sid', // Nom personnalisé pour Tunisia Jockey Club
+      store: redisStore,
+      secret: process.env.SESSION_SECRET,
+      resave: false,
+      saveUninitialized: false,
+      rolling: true, // Renouvelle la session à chaque requête
+      cookie: {
+        maxAge: 24 * 60 * 60 * 1000, // 24 heures au lieu de 30 jours
+        httpOnly: true,
+        secure: isProduction, // HTTPS uniquement en production
+        sameSite: isProduction ? 'strict' : 'lax', // Plus strict en production
+      },
+    }),
+  );
     console.log('Middleware de session initialisé.');
 
     app.useStaticAssets(getPublicDir(), {
@@ -55,6 +69,11 @@ async function bootstrap() {
     console.log('Assets statiques configurés.');
 
     app.useGlobalFilters(new HttpExceptionFilter());
+
+    // Activation du guard global d'authentification
+    const reflector = app.get(Reflector);
+    const prismaService = app.get(PrismaService);
+    app.useGlobalGuards(new GlobalAuthGuard(reflector, prismaService));
 
     app.use(passport.initialize());
     app.use(passport.session());

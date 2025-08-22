@@ -3,6 +3,8 @@ import { type LinksFunction, type LoaderFunctionArgs, json } from "@remix-run/no
 import { Links, Meta, Outlet, Scripts, ScrollRestoration, useRouteLoaderData } from "@remix-run/react";
 import { Footer } from "./components/Footer";
 import { Navbar } from "./components/Navbar";
+import { QueryProvider } from "./shared/providers/QueryProvider";
+import { ErrorBoundary as AppErrorBoundary } from "./shared/components/ErrorBoundary";
 // @ts-ignore
 import stylesheet from "./global.css?url";
 import logo from "./routes/_assets/logo-automecanik-dark.png";
@@ -49,7 +51,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
           <Navbar logo={logo} />
           <main className="flex-grow flex flex-col">
             <div className="flex-grow">
-              {children}
+              <AppErrorBoundary>
+                <QueryProvider>
+                  {children}
+                </QueryProvider>
+              </AppErrorBoundary>
             </div>
            </main>
         </div>
