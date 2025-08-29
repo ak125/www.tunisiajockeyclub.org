@@ -173,20 +173,11 @@ profile_data='{
 
 test_route "PUT" "/api/users/profile" "200" "Update User Profile" "$profile_data"
 
-# Test 5: Routes des paris
-print_title "5. BETTING ROUTES"
+# Test 5: Race Management Routes
+print_title "5. RACE MANAGEMENT ROUTES"
 
-test_route "GET" "/api/bets" "200" "Get All Bets"
-
-# Placer un pari
-bet_data='{
-    "raceId": "1",
-    "horseId": "1",
-    "amount": 50,
-    "type": "win"
-}'
-
-test_route "POST" "/api/bets" "201" "Place New Bet" "$bet_data"
+test_route "GET" "/api/races" "200" "Get All Races"
+test_route "GET" "/api/races/1" "200" "Get Race Details"
 
 # Test 6: Routes d'administration
 print_title "6. ADMIN ROUTES"

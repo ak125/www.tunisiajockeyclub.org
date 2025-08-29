@@ -89,8 +89,8 @@ export default function AdminDashboard() {
             <div className="flex items-center space-x-2">
               <Trophy className="w-5 h-5 text-yellow-500" />
               <div className="text-center">
-                <div className="text-lg font-bold">89</div>
-                <div className="text-xs text-gray-500">Paris actifs</div>
+                <div className="text-lg font-bold">24</div>
+                <div className="text-xs text-gray-500">Courses actives</div>
               </div>
             </div>
           </div>

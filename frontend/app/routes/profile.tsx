@@ -30,7 +30,7 @@ interface UserProfile {
   address: string;
   dateOfBirth: string;
   memberSince: string;
-  totalBets: number;
+  totalRaces: number;
   winRate: number;
   favoriteHorse: string;
   city: string;
@@ -42,8 +42,8 @@ interface UserProfile {
 }
 
 interface UserStats {
-  totalBets: number;
-  winningBets: number;
+  totalRaces: number;
+  winningRaces: number;
   totalWinnings: number;
   favoriteHorse: string;
 }
@@ -69,7 +69,7 @@ export const loader = async ({ context, request }: LoaderFunctionArgs) => {
     address: 'Tunis, Tunisie',
     dateOfBirth: '1990-05-15',
     memberSince: '2020-01-15',
-    totalBets: 145,
+    totalRaces: 145,
     winRate: 68.5,
     favoriteHorse: 'Thunder Bolt',
     city: 'Tunis',
@@ -81,8 +81,8 @@ export const loader = async ({ context, request }: LoaderFunctionArgs) => {
   };
 
   const mockStats = {
-    totalBets: 145,
-    winningBets: 99,
+    totalRaces: 145,
+    winningRaces: 99,
     totalWinnings: 15420.50,
     favoriteHorse: 'Thunder Bolt'
   };
@@ -168,12 +168,12 @@ export default function UserProfile() {
               {/* Quick Stats */}
               <div className="grid grid-cols-2 gap-4 pt-4 border-t">
                 <div className="text-center">
-                  <p className="text-2xl font-bold text-blue-600">{stats.totalBets}</p>
-                  <p className="text-sm text-slate-600">Paris Total</p>
+                  <p className="text-2xl font-bold text-blue-600">{stats.totalRaces}</p>
+                  <p className="text-sm text-slate-600">Courses Total</p>
                 </div>
                 <div className="text-center">
-                  <p className="text-2xl font-bold text-green-600">{stats.winningBets}</p>
-                  <p className="text-sm text-slate-600">Paris Gagnants</p>
+                  <p className="text-2xl font-bold text-green-600">{stats.winningRaces}</p>
+                  <p className="text-sm text-slate-600">Courses Gagnées</p>
                 </div>
                 <div className="text-center">
                   <p className="text-2xl font-bold text-yellow-600">{stats.totalWinnings} DT</p>
@@ -322,9 +322,9 @@ export default function UserProfile() {
           <CardContent>
             <div className="space-y-4">
               {[
-                { action: "Pari placé sur Thunder Bolt", time: "Il y a 2 heures", type: "bet" },
+                { action: "Participation à Thunder Bolt", time: "Il y a 2 heures", type: "race" },
                 { action: "Connexion depuis Tunis", time: "Il y a 3 heures", type: "login" },
-                { action: "Pari gagnant - Prix de Carthage", time: "Hier", type: "win" },
+                { action: "Course gagnée - Prix de Carthage", time: "Hier", type: "win" },
                 { action: "Profil mis à jour", time: "Il y a 2 jours", type: "profile" }
               ].map((activity, index) => (
                 <motion.div
@@ -336,7 +336,7 @@ export default function UserProfile() {
                 >
                   <div className={`w-3 h-3 rounded-full ${
                     activity.type === 'win' ? 'bg-green-500' :
-                    activity.type === 'bet' ? 'bg-blue-500' :
+                    activity.type === 'race' ? 'bg-blue-500' :
                     activity.type === 'login' ? 'bg-purple-500' : 'bg-gray-500'
                   }`} />
                   <div className="flex-1">

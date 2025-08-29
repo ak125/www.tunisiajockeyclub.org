@@ -2,17 +2,16 @@ import { type RemixService } from "@fafa/backend";
 import { type LinksFunction, type LoaderFunctionArgs, json } from "@remix-run/node";
 import { Links, Meta, Outlet, Scripts, ScrollRestoration, useRouteLoaderData } from "@remix-run/react";
 import { Footer } from "./components/Footer";
-import { Navbar } from "./components/Navbar";
+import { MainLayout } from "./components/layout/MainLayout";
 import { QueryProvider } from "./shared/providers/QueryProvider";
 import { ErrorBoundary as AppErrorBoundary } from "./shared/components/ErrorBoundary";
-// @ts-ignore
-import stylesheet from "./global.css?url";
+import { Toaster } from "react-hot-toast";
+import "./global.css";
+import "./styles/design-system.css";
 import logo from "./routes/_assets/logo-automecanik-dark.png";
 import { getOptionalUser } from "./server/auth.server";
 
-export const links: LinksFunction = () => [
-  { rel: "stylesheet", href: stylesheet },
-];
+export const links: LinksFunction = () => [];
 
 export const loader = async ({ request,context }: LoaderFunctionArgs) => {
   const user = await getOptionalUser({ context });
@@ -46,20 +45,51 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <Meta />
         <Links />
       </head>
-      <body className="h-full bg-gray-100">
-        <div className="min-h-screen flex flex-col">
-          <Navbar logo={logo} />
-          <main className="flex-grow flex flex-col">
-            <div className="flex-grow">
-              <AppErrorBoundary>
-                <QueryProvider>
-                  {children}
-                </QueryProvider>
-              </AppErrorBoundary>
-            </div>
-           </main>
-        </div>
+      <body className="h-full bg-gray-50">
+        <MainLayout>
+          <AppErrorBoundary>
+            <QueryProvider>
+              {children}
+            </QueryProvider>
+          </AppErrorBoundary>
+        </MainLayout>
         <Footer />
+        
+        {/* Toast notifications */}
+        <Toaster
+          position="top-right"
+          toastOptions={{
+            duration: 4000,
+            style: {
+              background: '#fff',
+              color: '#333',
+              padding: '16px',
+              borderRadius: '12px',
+              boxShadow: '0 10px 25px rgba(0, 0, 0, 0.1)',
+              border: '1px solid #e5e7eb',
+              fontSize: '14px',
+            },
+            success: {
+              iconTheme: {
+                primary: '#22c55e',
+                secondary: '#fff',
+              },
+              style: {
+                border: '1px solid #22c55e',
+              },
+            },
+            error: {
+              iconTheme: {
+                primary: '#ef4444',
+                secondary: '#fff',
+              },
+              style: {
+                border: '1px solid #ef4444',
+              },
+            },
+          }}
+        />
+        
         <ScrollRestoration />
         <Scripts />
       </body>

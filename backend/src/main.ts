@@ -1,17 +1,21 @@
+import 'reflect-metadata';
 import 'dotenv/config';
 import { getPublicDir, startDevServer } from '@fafa/frontend';
 import { NestFactory, Reflector } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { AppModule } from './app.module';
+import { RequestMethod } from '@nestjs/common';
 
 import RedisStore from 'connect-redis';
 import session from 'express-session';
 import Redis from 'ioredis';
 import passport from 'passport';
+import helmet from 'helmet';
 import { urlencoded, json } from 'body-parser';
 import { HttpExceptionFilter } from './auth/exception.filter';
 import { GlobalAuthGuard } from './auth/global-auth.guard';
 import { PrismaService } from './prisma/prisma.service';
+import { SecurityService } from './security/security.service';
 
 const redisStoreFactory = RedisStore(session);
 
@@ -58,10 +62,43 @@ async function bootstrap() {
         sameSite: isProduction ? 'strict' : 'lax', // Plus strict en production
       },
     }),
-  );
+    );
     console.log('Middleware de session initialisé.');
 
-    app.useStaticAssets(getPublicDir(), {
+    // Middleware de sécurité avec Helmet
+    const securityService = app.get(SecurityService);
+    const securityHeaders = securityService.getSecurityHeaders();
+    
+    app.use(helmet({
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'self'"],
+          scriptSrc: ["'self'", "'unsafe-inline'"],
+          styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+          fontSrc: ["'self'", "https://fonts.gstatic.com"],
+          imgSrc: ["'self'", "data:", "https:"],
+          connectSrc: ["'self'", "https://*.supabase.co", "wss://*.supabase.co"],
+          frameAncestors: ["'none'"],
+          baseUri: ["'self'"],
+          formAction: ["'self'"]
+        }
+      },
+      hsts: isProduction ? {
+        maxAge: 31536000,
+        includeSubDomains: true,
+        preload: true
+      } : false
+    }));
+    
+    // Ajouter les headers de sécurité personnalisés
+    app.use((req: any, res: any, next: any) => {
+      Object.entries(securityHeaders).forEach(([key, value]) => {
+        res.setHeader(key, value);
+      });
+      next();
+    });
+    
+    console.log('Middlewares de sécurité initialisés.');    app.useStaticAssets(getPublicDir(), {
       immutable: true,
       maxAge: '1y',
       index: false,
@@ -77,9 +114,30 @@ async function bootstrap() {
 
     app.use(passport.initialize());
     app.use(passport.session());
+    
+    // Configuration du préfixe global pour les APIs
+    app.setGlobalPrefix('api', {
+      exclude: [
+        { path: '/', method: RequestMethod.ALL },
+        { path: '/*', method: RequestMethod.ALL },
+        { path: '/dashboard*', method: RequestMethod.ALL },
+        { path: '/auth/login*', method: RequestMethod.ALL },
+        { path: '/static*', method: RequestMethod.ALL },
+        { path: '/_remix*', method: RequestMethod.ALL },
+        { path: '/assets*', method: RequestMethod.ALL },
+        { path: 'favicon.ico', method: RequestMethod.GET },
+        { path: 'robots.txt', method: RequestMethod.GET },
+      ],
+    });
+    
+    // Configuration body-parser pour tous les endpoints API
+    app.use('/api', json({ limit: '10mb' }));
+    app.use('/api', urlencoded({ extended: true, limit: '10mb' }));
+    
+    // Configuration body-parser spécifique pour l'ancien endpoint auth
     app.use('/auth/login', urlencoded({ extended: true }));
     app.use('/auth/login', json());
-    console.log('Passport initialisé.');
+    console.log('Passport et body-parser initialisés.');
 
     app.set('trust proxy', 1);
 

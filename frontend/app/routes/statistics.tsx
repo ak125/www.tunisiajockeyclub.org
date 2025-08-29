@@ -51,13 +51,13 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   ];
 
   const dailyStats = [
-    { day: "Lun", visitors: 420, bets: 89 },
-    { day: "Mar", visitors: 380, bets: 76 },
-    { day: "Mer", visitors: 450, bets: 95 },
-    { day: "Jeu", visitors: 520, bets: 112 },
-    { day: "Ven", visitors: 680, bets: 145 },
-    { day: "Sam", visitors: 850, bets: 189 },
-    { day: "Dim", visitors: 720, bets: 156 }
+    { day: "Lun", visitors: 420, races: 12 },
+    { day: "Mar", visitors: 380, races: 8 },
+    { day: "Mer", visitors: 450, races: 15 },
+    { day: "Jeu", visitors: 520, races: 18 },
+    { day: "Ven", visitors: 680, races: 22 },
+    { day: "Sam", visitors: 850, races: 28 },
+    { day: "Dim", visitors: 720, races: 20 }
   ];
 
   const topHorses = [
@@ -131,8 +131,8 @@ export default function Statistics() {
             trend: "up"
           },
           {
-            title: "Paris/Jour",
-            value: Math.round(dailyStats.reduce((acc, day) => acc + day.bets, 0) / dailyStats.length).toString(),
+            title: "Courses/Jour",
+            value: Math.round(dailyStats.reduce((acc, day) => acc + day.races, 0) / dailyStats.length).toString(),
             change: "-2.1%",
             icon: Activity,
             color: "text-orange-600",
@@ -277,7 +277,7 @@ export default function Statistics() {
                 <Calendar className="h-5 w-5 text-purple-600" />
                 Activité Hebdomadaire
               </CardTitle>
-              <CardDescription>Visiteurs et paris par jour</CardDescription>
+              <CardDescription>Visiteurs et courses par jour</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="h-80">
@@ -295,7 +295,7 @@ export default function Statistics() {
                       }}
                     />
                     <Bar dataKey="visitors" fill="#8B5CF6" radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="bets" fill="#06B6D4" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="races" fill="#06B6D4" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>

@@ -1,0 +1,318 @@
+/**
+ * 🎨 Tunisia Jockey Club - Design System Institutionnel
+ * Version 2.0 - Identité Tunisienne Renforcée
+ */
+
+:root {
+  /* === COULEURS INSTITUTIONNELLES === */
+  /* Marque principale - Vert institution */
+  --brand: #0F766E;
+  --brand-50: #F0FDFA;
+  --brand-100: #CCFBF1;
+  --brand-200: #99F6E4;
+  --brand-300: #5EEAD4;
+  --brand-400: #2DD4BF;
+  --brand-500: #0F766E;
+  --brand-600: #0A7A6D;
+  --brand-700: #0F5A54;
+  --brand-800: #134E4A;
+  --brand-900: #164139;
+
+  /* Accent - Rouge Tunisie (usage parcimonieux) */
+  --accent: #D21C1C;
+  --accent-50: #FEF2F2;
+  --accent-100: #FEE2E2;
+  --accent-200: #FECACA;
+  --accent-300: #FCA5A5;
+  --accent-400: #F87171;
+  --accent-500: #D21C1C;
+  --accent-600: #B91C1C;
+  --accent-700: #991B1B;
+  --accent-800: #7F1D1D;
+  --accent-900: #5B0F0F;
+
+  /* === COULEURS DE TEXTE === */
+  --text-primary: #0F172A;      /* Texte principal */
+  --text-secondary: #475569;    /* Texte secondaire */
+  --text-muted: #64748B;        /* Texte atténué */
+  --text-inverse: #FFFFFF;      /* Texte sur fond foncé */
+
+  /* === COULEURS DE SURFACE === */
+  --surface-primary: #FFFFFF;   /* Cartes, modales */
+  --surface-secondary: #F8FAFC; /* Arrière-plan */
+  --surface-tertiary: #F1F5F9;  /* Sections alternées */
+  
+  /* === COULEURS FONCTIONNELLES === */
+  --border-primary: #E2E8F0;    /* Bordures principales */
+  --border-secondary: #CBD5E1;  /* Bordures accentuées */
+  --shadow: rgba(15, 23, 42, 0.1); /* Ombres */
+
+  /* === COULEURS D'ÉTAT === */
+  --success: #059669;
+  --success-bg: #D1FAE5;
+  --warning: #D97706;
+  --warning-bg: #FED7AA;
+  --error: #DC2626;
+  --error-bg: #FEE2E2;
+  --info: var(--brand-500);
+  --info-bg: var(--brand-50);
+
+  /* === TYPOGRAPHIE === */
+  --font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+  
+  /* Tailles de police */
+  --text-xs: 0.75rem;      /* 12px */
+  --text-sm: 0.875rem;     /* 14px */
+  --text-base: 1rem;       /* 16px - Corps de texte */
+  --text-lg: 1.125rem;     /* 18px */
+  --text-xl: 1.25rem;      /* 20px - Sous-titres */
+  --text-2xl: 1.5rem;      /* 24px */
+  --text-3xl: 1.875rem;    /* 30px - Titres de section */
+  --text-4xl: 2.25rem;     /* 36px */
+  --text-5xl: 3rem;        /* 48px - Titre héros */
+
+  /* Hauteurs de ligne */
+  --leading-tight: 1.25;
+  --leading-snug: 1.375;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.625;
+
+  /* === ESPACEMENTS === */
+  --spacing-section-mobile: 5rem;    /* py-20 */
+  --spacing-section-desktop: 6rem;   /* py-24 */
+  --spacing-component: 2rem;          /* py-8 */
+  --spacing-tight: 1rem;              /* py-4 */
+
+  /* === CONTENEURS === */
+  --container-max-width: 72rem;       /* max-w-6xl */
+  --container-padding: 1rem;          /* px-4 */
+
+  /* === BORDURES & RAYONS === */
+  --radius-sm: 0.25rem;    /* 4px */
+  --radius-md: 0.375rem;   /* 6px */
+  --radius-lg: 0.5rem;     /* 8px */
+  --radius-xl: 0.75rem;    /* 12px */
+  --radius-2xl: 1rem;      /* 16px */
+
+  /* === OMBRES === */
+  --shadow-sm: 0 1px 2px 0 rgba(15, 23, 42, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(15, 23, 42, 0.1);
+  --shadow-lg: 0 10px 15px -3px rgba(15, 23, 42, 0.1);
+  --shadow-xl: 0 20px 25px -5px rgba(15, 23, 42, 0.1);
+
+  /* === TRANSITIONS === */
+  --transition-fast: 150ms ease-in-out;
+  --transition-normal: 250ms ease-in-out;
+  --transition-slow: 350ms ease-in-out;
+
+  /* === Z-INDEX === */
+  --z-dropdown: 1000;
+  --z-sticky: 1010;
+  --z-fixed: 1020;
+  --z-modal: 1030;
+  --z-tooltip: 1040;
+}
+
+/* === CLASSES UTILITAIRES === */
+
+/* Conteneurs */
+.container-main {
+  max-width: var(--container-max-width);
+  margin: 0 auto;
+  padding: 0 var(--container-padding);
+}
+
+/* Espacements de sections */
+.section-spacing {
+  padding: var(--spacing-section-mobile) 0;
+}
+
+@media (min-width: 768px) {
+  .section-spacing {
+    padding: var(--spacing-section-desktop) 0;
+  }
+}
+
+/* Typographie institutionnelle */
+.text-hero {
+  font-size: var(--text-5xl);
+  line-height: var(--leading-tight);
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.text-section-title {
+  font-size: var(--text-3xl);
+  line-height: var(--leading-tight);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.text-subtitle {
+  font-size: var(--text-xl);
+  line-height: var(--leading-snug);
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.text-body {
+  font-size: var(--text-base);
+  line-height: var(--leading-normal);
+  color: var(--text-secondary);
+}
+
+/* Boutons institutionnels */
+.btn-primary {
+  background: var(--brand);
+  color: var(--text-inverse);
+  padding: 0.75rem 1.5rem;
+  border-radius: var(--radius-lg);
+  font-weight: 500;
+  transition: all var(--transition-normal);
+  border: none;
+  cursor: pointer;
+}
+
+.btn-primary:hover {
+  background: var(--brand-600);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-lg);
+}
+
+.btn-secondary {
+  background: var(--surface-primary);
+  color: var(--brand);
+  border: 2px solid var(--brand);
+  padding: 0.75rem 1.5rem;
+  border-radius: var(--radius-lg);
+  font-weight: 500;
+  transition: all var(--transition-normal);
+  cursor: pointer;
+}
+
+.btn-secondary:hover {
+  background: var(--brand-50);
+}
+
+.btn-accent {
+  background: var(--accent);
+  color: var(--text-inverse);
+  padding: 0.75rem 2rem;
+  border-radius: var(--radius-lg);
+  font-weight: 600;
+  transition: all var(--transition-normal);
+  border: none;
+  cursor: pointer;
+}
+
+.btn-accent:hover {
+  background: var(--accent-600);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-lg);
+}
+
+/* Cartes institutionnelles */
+.card-primary {
+  background: var(--surface-primary);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-xl);
+  padding: 2rem;
+  box-shadow: var(--shadow-sm);
+  transition: all var(--transition-normal);
+}
+
+.card-primary:hover {
+  box-shadow: var(--shadow-lg);
+  transform: translateY(-2px);
+}
+
+/* États de focus - Accessibilité */
+.focus-ring {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+
+/* Animations subtiles */
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.6s ease-out;
+}
+
+/* Grilles responsives */
+.grid-cards {
+  display: grid;
+  gap: 2rem;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 768px) {
+  .grid-cards {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .grid-cards {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* Barre de statistiques */
+.stat-band {
+  display: flex;
+  gap: 3rem;
+  justify-content: center;
+  align-items: center;
+  padding: 2rem 0;
+}
+
+@media (max-width: 768px) {
+  .stat-band {
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+}
+
+.stat-item {
+  text-align: center;
+}
+
+.stat-number {
+  font-size: var(--text-4xl);
+  font-weight: 700;
+  color: var(--brand);
+  line-height: var(--leading-tight);
+}
+
+.stat-label {
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-top: 0.5rem;
+}
+
+/* Mode sombre - Support futur */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --text-primary: #F8FAFC;
+    --text-secondary: #CBD5E1;
+    --text-muted: #94A3B8;
+    --surface-primary: #1E293B;
+    --surface-secondary: #0F172A;
+    --surface-tertiary: #334155;
+    --border-primary: #334155;
+    --border-secondary: #475569;
+  }
+}

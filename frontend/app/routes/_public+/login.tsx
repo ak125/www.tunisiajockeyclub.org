@@ -17,18 +17,63 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         const email = formData.get('email')?.toString();
         const password = formData.get('password')?.toString();
         
-        console.log('Login attempt for:', email);
+        console.log('🔐 Tentative de connexion pour:', email);
         
-        // Pour l'instant, on simule une authentification simple
-        if (email && password) {
-            // TODO: Implémenter la vraie authentification
-            return redirect('/');
+        if (!email || !password) {
+            return json(
+                { error: 'Email et mot de passe requis' },
+                { status: 400 }
+            );
         }
         
-        return json(
-            { error: 'Email et mot de passe requis' },
-            { status: 400 }
-        );
+        // Authentification via le backend NestJS
+        try {
+            const backendUrl = process.env.BACKEND_URL || 'http://localhost:3000';
+            
+            // Authentifier avec le backend
+            const authResponse = await fetch(`${backendUrl}/api/auth/login`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ email, password })
+            });
+            
+            if (!authResponse.ok) {
+                return json(
+                    { error: 'Erreur de connexion au serveur' },
+                    { status: 500 }
+                );
+            }
+            
+            const authResult = await authResponse.json();
+            
+            if (!authResult.success) {
+                console.log('❌ Authentification échouée:', authResult.message);
+                return json(
+                    { 
+                        error: authResult.message,
+                        availableUsers: authResult.availableUsers 
+                    },
+                    { status: 401 }
+                );
+            }
+            
+            // Si auth OK, rediriger avec le token ou créer une session Remix
+            console.log('✅ Authentification réussie pour:', email);
+            
+            // Pour l'instant, rediriger vers le dashboard
+            // TODO: Implémenter la persistance de session Remix
+            return redirect('/dashboard');
+            
+        } catch (fetchError) {
+            console.error('❌ Erreur de connexion au backend:', fetchError);
+            return json(
+                { error: 'Erreur de connexion au serveur' },
+                { status: 500 }
+            );
+        }
+        
     } catch (error) {
         console.error('❌ Erreur dans l\'action login:', error);
         return json(

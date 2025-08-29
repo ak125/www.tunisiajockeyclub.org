@@ -1,9 +1,31 @@
 import { json, type LoaderFunctionArgs } from "@remix-run/node";
 import { useLoaderData } from '@remix-run/react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from 'recharts';
-import { Calendar, Trophy, Users, Activity, TrendingUp, Zap } from 'lucide-react';
+import { Calendar, Trophy, Users, Activity, TrendingUp, Zap, Award, Target, BarChart3, PieChart as PieChartIcon } from 'lucide-react';
 
-// Mock data pour le dashboard - en attendant les vraies APIs
+// Import du nouveau design system
+import {
+  Container,
+  Section,
+  SectionTitle,
+  Card,
+  StatBand,
+  CardGrid,
+  Header,
+  Logo,
+  SystemStatus
+} from '../components/design-system/Institutional';
+
+import { 
+  getDashboardStats, 
+  getMonthlyRaceData, 
+  getHorsePerformance, 
+  getRaceTypeDistribution, 
+  getRecentRaces 
+} from '~/services/dashboard.server';
+import { getRatingStatistics } from '~/services/rating.server';
+
+// Mock data pour fallback
 const generateMockData = () => {
   const coursesData = [
     { mois: 'Jan', courses: 12, participants: 156 },
@@ -22,202 +44,385 @@ const generateMockData = () => {
     { nom: 'Arabian Dream', victoires: 9, courses: 14 }
   ];
 
-  const categoriesData = [
-    { name: 'Galop', value: 45, color: '#0088FE' },
-    { name: 'Trot', value: 30, color: '#00C49F' },
-    { name: 'Obstacles', value: 25, color: '#FFBB28' }
+  const raceTypeData = [
+    { type: 'Plat', nombre: 45, couleur: '#0F766E' },
+    { type: 'Obstacles', nombre: 28, couleur: '#D21C1C' },
+    { type: 'Trot', nombre: 32, couleur: '#059669' },
+    { type: 'Cross', nombre: 18, couleur: '#D97706' }
   ];
 
-  return { coursesData, performanceData, categoriesData };
+  return { coursesData, performanceData, raceTypeData };
 };
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
+  try {
+    const [stats, monthlyData, horsePerformance, raceTypes, recentRaces, ratingStats] = await Promise.allSettled([
+      getDashboardStats(),
+      getMonthlyRaceData(),
+      getHorsePerformance(),
+      getRaceTypeDistribution(),
+      getRecentRaces(),
+      getRatingStatistics()
+    ]);
+
     const mockData = generateMockData();
-    
-    // Statistiques générales
-    const stats = {
-        totalCourses: 124,
-        totalChevaux: 89,
-        totalJockeys: 32,
-        coursesThisMonth: 25
-    };
-    
+
     return json({
-        stats,
-        ...mockData,
-        timestamp: new Date().toISOString(),
+      stats: stats.status === 'fulfilled' ? stats.value : {
+        totalRaces: 124,
+        activeHorses: 89,
+        registeredJockeys: 32,
+        averageRating: 78.5,
+        upcomingEvents: 8,
+        monthlyGrowth: 12.5
+      },
+      monthlyData: monthlyData.status === 'fulfilled' ? monthlyData.value : mockData.coursesData,
+      horsePerformance: horsePerformance.status === 'fulfilled' ? horsePerformance.value : mockData.performanceData,
+      raceTypes: raceTypes.status === 'fulfilled' ? raceTypes.value : mockData.raceTypeData,
+      recentRaces: recentRaces.status === 'fulfilled' ? recentRaces.value : [],
+      ratingStats: ratingStats.status === 'fulfilled' ? ratingStats.value : {
+        totalRatings: 156,
+        averageRating: 78.5,
+        topRating: 95.2
+      },
+      timestamp: new Date().toISOString(),
     });
+  } catch (error) {
+    const mockData = generateMockData();
+    return json({
+      stats: {
+        totalRaces: 124,
+        activeHorses: 89,
+        registeredJockeys: 32,
+        averageRating: 78.5,
+        upcomingEvents: 8,
+        monthlyGrowth: 12.5
+      },
+      monthlyData: mockData.coursesData,
+      horsePerformance: mockData.performanceData,
+      raceTypes: mockData.raceTypeData,
+      recentRaces: [],
+      ratingStats: {
+        totalRatings: 156,
+        averageRating: 78.5,
+        topRating: 95.2
+      },
+      timestamp: new Date().toISOString(),
+    });
+  }
 };
 
-export default function DashboardIndex() {
-    const { stats, coursesData, performanceData, categoriesData } = useLoaderData<typeof loader>();
-
-    return (
-        <div className="min-h-screen bg-gray-50 p-6">
-            <div className="max-w-7xl mx-auto">
-                {/* Header */}
-                <div className="mb-8">
-                    <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                        🏇 Dashboard Tunisia Jockey Club
-                    </h1>
-                    <p className="text-gray-600">
-                        Vue d'ensemble des performances et statistiques
-                    </p>
-                </div>
-
-                {/* KPIs Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                    <div className="bg-white rounded-lg shadow-md p-6">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm font-medium text-gray-500">Total Courses</p>
-                                <p className="text-3xl font-bold text-blue-600">{stats.totalCourses}</p>
-                            </div>
-                            <Trophy className="h-8 w-8 text-blue-600" />
-                        </div>
-                        <div className="mt-2 flex items-center text-sm">
-                            <TrendingUp className="h-4 w-4 text-green-500 mr-1" />
-                            <span className="text-green-500">+12%</span>
-                            <span className="text-gray-500 ml-1">vs mois dernier</span>
-                        </div>
-                    </div>
-
-                    <div className="bg-white rounded-lg shadow-md p-6">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm font-medium text-gray-500">Chevaux Actifs</p>
-                                <p className="text-3xl font-bold text-green-600">{stats.totalChevaux}</p>
-                            </div>
-                            <Zap className="h-8 w-8 text-green-600" />
-                        </div>
-                        <div className="mt-2 flex items-center text-sm">
-                            <Activity className="h-4 w-4 text-blue-500 mr-1" />
-                            <span className="text-blue-500">En activité</span>
-                        </div>
-                    </div>
-
-                    <div className="bg-white rounded-lg shadow-md p-6">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm font-medium text-gray-500">Jockeys</p>
-                                <p className="text-3xl font-bold text-purple-600">{stats.totalJockeys}</p>
-                            </div>
-                            <Users className="h-8 w-8 text-purple-600" />
-                        </div>
-                        <div className="mt-2 flex items-center text-sm">
-                            <span className="text-gray-500">Professionnels actifs</span>
-                        </div>
-                    </div>
-
-                    <div className="bg-white rounded-lg shadow-md p-6">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm font-medium text-gray-500">Ce Mois</p>
-                                <p className="text-3xl font-bold text-orange-600">{stats.coursesThisMonth}</p>
-                            </div>
-                            <Calendar className="h-8 w-8 text-orange-600" />
-                        </div>
-                        <div className="mt-2 flex items-center text-sm">
-                            <span className="text-gray-500">Courses programmées</span>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Charts Grid */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-                    {/* Évolution des courses */}
-                    <div className="bg-white rounded-lg shadow-md p-6">
-                        <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                            📈 Évolution des Courses
-                        </h3>
-                        <ResponsiveContainer width="100%" height={300}>
-                            <LineChart data={coursesData}>
-                                <CartesianGrid strokeDasharray="3 3" />
-                                <XAxis dataKey="mois" />
-                                <YAxis />
-                                <Tooltip />
-                                <Legend />
-                                <Line 
-                                    type="monotone" 
-                                    dataKey="courses" 
-                                    stroke="#2563eb" 
-                                    strokeWidth={3}
-                                    name="Nb Courses"
-                                />
-                                <Line 
-                                    type="monotone" 
-                                    dataKey="participants" 
-                                    stroke="#10b981" 
-                                    strokeWidth={3}
-                                    name="Participants"
-                                />
-                            </LineChart>
-                        </ResponsiveContainer>
-                    </div>
-
-                    {/* Répartition par catégorie */}
-                    <div className="bg-white rounded-lg shadow-md p-6">
-                        <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                            🎯 Répartition par Catégorie
-                        </h3>
-                        <ResponsiveContainer width="100%" height={300}>
-                            <PieChart>
-                                <Pie
-                                    data={categoriesData}
-                                    cx="50%"
-                                    cy="50%"
-                                    labelLine={false}
-                                    label={({ name, percent }: any) => `${name} ${(percent * 100).toFixed(0)}%`}
-                                    outerRadius={80}
-                                    fill="#8884d8"
-                                    dataKey="value"
-                                >
-                                    {categoriesData.map((entry, index) => (
-                                        <Cell key={`cell-${index}`} fill={entry.color} />
-                                    ))}
-                                </Pie>
-                                <Tooltip />
-                            </PieChart>
-                        </ResponsiveContainer>
-                    </div>
-                </div>
-
-                {/* Performance des chevaux */}
-                <div className="bg-white rounded-lg shadow-md p-6">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                        🏆 Top Performers
-                    </h3>
-                    <ResponsiveContainer width="100%" height={300}>
-                        <BarChart data={performanceData}>
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="nom" />
-                            <YAxis />
-                            <Tooltip />
-                            <Legend />
-                            <Bar dataKey="victoires" fill="#f59e0b" name="Victoires" />
-                            <Bar dataKey="courses" fill="#6366f1" name="Total Courses" />
-                        </BarChart>
-                    </ResponsiveContainer>
-                </div>
-
-                {/* Actions rapides */}
-                <div className="mt-8">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                        ⚡ Actions Rapides
-                    </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <button className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-lg font-medium transition-colors">
-                            📅 Programmer une course
-                        </button>
-                        <button className="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-lg font-medium transition-colors">
-                            🐎 Ajouter un cheval
-                        </button>
-                        <button className="bg-purple-500 hover:bg-purple-600 text-white px-6 py-3 rounded-lg font-medium transition-colors">
-                            📊 Générer un rapport
-                        </button>
-                    </div>
-                </div>
-            </div>
+// Header institutionnel Dashboard
+function DashboardHeader() {
+  return (
+    <Header>
+      <div className="flex items-center">
+        <Logo size="default" className="mr-3" />
+        <div>
+          <h1 className="text-lg font-bold text-slate-900">Dashboard Institutionnel</h1>
+          <p className="text-sm text-slate-600">Tunisia Jockey Club - Analytics</p>
         </div>
-    );
+      </div>
+      
+      <div className="flex items-center space-x-4">
+        <SystemStatus />
+        <div className="text-sm text-slate-600">
+          Système IFHA Certifié
+        </div>
+      </div>
+    </Header>
+  );
+}
+
+// Section des KPIs Institutionnels
+function KPISection({ stats }: { stats: any }) {
+  const kpiData = [
+    { 
+      number: stats.totalRaces || 0, 
+      label: 'Courses Organisées',
+      growth: '+12%'
+    },
+    { 
+      number: stats.activeHorses || 0, 
+      label: 'Chevaux Actifs',
+      growth: '+8%'
+    },
+    { 
+      number: stats.registeredJockeys || 0, 
+      label: 'Jockeys Licenciés',
+      growth: '+5%'
+    },
+    { 
+      number: stats.averageRating ? stats.averageRating.toFixed(1) : '0.0', 
+      label: 'Rating IFHA Moyen',
+      growth: '+3.2'
+    }
+  ];
+
+  return (
+    <Section background="alternate">
+      <Container>
+        <div className="text-center mb-8">
+          <SectionTitle>Indicateurs de Performance</SectionTitle>
+          <p className="text-slate-600">Métriques clés de l'activité hippique tunisienne</p>
+        </div>
+        
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+          {kpiData.map((kpi, index) => (
+            <Card key={index} className="text-center">
+              <div className="text-3xl font-bold text-brand-600 mb-2">
+                {typeof kpi.number === 'number' ? kpi.number.toLocaleString('fr-FR') : kpi.number}
+              </div>
+              <div className="text-sm font-medium text-slate-900 mb-1">
+                {kpi.label}
+              </div>
+              <div className="text-xs text-emerald-600 font-medium">
+                {kpi.growth} ce mois
+              </div>
+            </Card>
+          ))}
+        </div>
+      </Container>
+    </Section>
+  );
+}
+
+// Section Graphiques Analytiques
+function AnalyticsSection({ monthlyData, horsePerformance, raceTypes }: any) {
+  // Protection contre les données undefined
+  const safeMonthlyData = monthlyData || [];
+  const safeHorsePerformance = horsePerformance || [];
+  const safeRaceTypes = raceTypes || [];
+
+  return (
+    <Section background="default">
+      <Container>
+        <SectionTitle className="text-center mb-12">Analytics Institutionnelles</SectionTitle>
+        
+        <CardGrid>
+          {/* Évolution Mensuelle */}
+          <Card className="col-span-full lg:col-span-2">
+            <div className="flex items-center mb-4">
+              <BarChart3 className="w-6 h-6 text-brand-600 mr-3" />
+              <h3 className="text-xl font-semibold text-slate-900">Évolution des Courses</h3>
+            </div>
+            
+            <div style={{ width: '100%', height: '300px' }}>
+              <ResponsiveContainer>
+                <LineChart data={safeMonthlyData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
+                  <XAxis 
+                    dataKey="mois" 
+                    stroke="#64748B"
+                    fontSize={12}
+                  />
+                  <YAxis stroke="#64748B" fontSize={12} />
+                  <Tooltip 
+                    contentStyle={{
+                      backgroundColor: 'white',
+                      border: '1px solid #E2E8F0',
+                      borderRadius: '8px',
+                      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                    }}
+                  />
+                  <Legend />
+                  <Line 
+                    type="monotone" 
+                    dataKey="courses" 
+                    stroke="#0F766E" 
+                    strokeWidth={3}
+                    name="Courses"
+                    dot={{ fill: '#0F766E', r: 4 }}
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="participants" 
+                    stroke="#D21C1C" 
+                    strokeWidth={2}
+                    name="Participants"
+                    dot={{ fill: '#D21C1C', r: 3 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </Card>
+
+          {/* Top Performers */}
+          <Card>
+            <div className="flex items-center mb-4">
+              <Trophy className="w-6 h-6 text-racing-gold-500 mr-3" />
+              <h3 className="text-xl font-semibold text-slate-900">Top Performers</h3>
+            </div>
+            
+            <div style={{ width: '100%', height: '300px' }}>
+              <ResponsiveContainer>
+                <BarChart data={safeHorsePerformance} layout="horizontal">
+                  <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
+                  <XAxis type="number" stroke="#64748B" fontSize={12} />
+                  <YAxis 
+                    dataKey="nom" 
+                    type="category" 
+                    stroke="#64748B" 
+                    fontSize={10}
+                    width={80}
+                  />
+                  <Tooltip 
+                    contentStyle={{
+                      backgroundColor: 'white',
+                      border: '1px solid #E2E8F0',
+                      borderRadius: '8px',
+                      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                    }}
+                  />
+                  <Bar 
+                    dataKey="victoires" 
+                    fill="#0F766E" 
+                    name="Victoires"
+                    radius={[0, 4, 4, 0]}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </Card>
+
+          {/* Distribution des Types de Course */}
+          <Card>
+            <div className="flex items-center mb-4">
+              <PieChartIcon className="w-6 h-6 text-stable-blue-600 mr-3" />
+              <h3 className="text-xl font-semibold text-slate-900">Types de Courses</h3>
+            </div>
+            
+            <div style={{ width: '100%', height: '300px' }}>
+              <ResponsiveContainer>
+                <PieChart>
+                  <Pie
+                    data={safeRaceTypes}
+                    dataKey="nombre"
+                    nameKey="type"
+                    cx="50%"
+                    cy="50%"
+                    outerRadius={80}
+                    label={({ type, nombre }) => `${type}: ${nombre}`}
+                  >
+                    {safeRaceTypes.map((entry: any, index: number) => (
+                      <Cell key={`cell-${index}`} fill={entry.couleur} />
+                    ))}
+                  </Pie>
+                  <Tooltip 
+                    contentStyle={{
+                      backgroundColor: 'white',
+                      border: '1px solid #E2E8F0',
+                      borderRadius: '8px',
+                      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                    }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          </Card>
+        </CardGrid>
+      </Container>
+    </Section>
+  );
+}
+
+// Section Actions Rapides
+function QuickActionsSection() {
+  const actions = [
+    {
+      icon: Trophy,
+      title: 'Nouveau Rating IFHA',
+      description: 'Calculer le rating d\'une performance',
+      link: '/rating/calculateur',
+      color: 'text-brand-600',
+      bgColor: 'bg-brand-50 hover:bg-brand-100'
+    },
+    {
+      icon: Calendar,
+      title: 'Planifier Course',
+      description: 'Organiser un nouvel événement',
+      link: '/race-management',
+      color: 'text-stable-blue-600',
+      bgColor: 'bg-blue-50 hover:bg-blue-100'
+    },
+    {
+      icon: Users,
+      title: 'Gestion Licences',
+      description: 'Administrer les jockeys',
+      link: '/dashboard/jockeys',
+      color: 'text-racing-gold-600',
+      bgColor: 'bg-yellow-50 hover:bg-yellow-100'
+    },
+    {
+      icon: BarChart3,
+      title: 'Analytics Avancées',
+      description: 'Rapports détaillés',
+      link: '/dashboard/analytics',
+      color: 'text-emerald-600',
+      bgColor: 'bg-emerald-50 hover:bg-emerald-100'
+    }
+  ];
+
+  return (
+    <Section background="alternate">
+      <Container>
+        <SectionTitle className="text-center mb-8">Actions Institutionnelles</SectionTitle>
+        
+        <CardGrid>
+          {actions.map((action, index) => (
+            <Card key={index} className={`text-center group cursor-pointer ${action.bgColor} transition-all duration-300`}>
+              <div className="mb-4">
+                <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform duration-300 shadow-sm">
+                  <action.icon className={`w-8 h-8 ${action.color}`} />
+                </div>
+                <h3 className="text-lg font-semibold text-slate-900 mb-2">{action.title}</h3>
+                <p className="text-slate-600 text-sm">{action.description}</p>
+              </div>
+              
+              <div className="mt-4">
+                <a 
+                  href={action.link}
+                  className="inline-flex items-center text-sm font-medium text-slate-700 hover:text-slate-900 transition-colors"
+                >
+                  Accéder <TrendingUp className="w-4 h-4 ml-1" />
+                </a>
+              </div>
+            </Card>
+          ))}
+        </CardGrid>
+      </Container>
+    </Section>
+  );
+}
+
+export default function InstitutionalDashboard() {
+  const { stats, monthlyData, horsePerformance, raceTypes } = useLoaderData<typeof loader>();
+
+  return (
+    <main className="animate-fade-in-up" style={{ fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+      <DashboardHeader />
+      <KPISection stats={stats} />
+      <AnalyticsSection 
+        monthlyData={monthlyData} 
+        horsePerformance={horsePerformance} 
+        raceTypes={raceTypes} 
+      />
+      <QuickActionsSection />
+      
+      {/* Footer Status */}
+      <div className="bg-slate-50 py-4">
+        <Container>
+          <div className="flex items-center justify-between text-sm text-slate-600">
+            <div>
+              Dashboard mis à jour en temps réel • Système IFHA certifié
+            </div>
+            <div className="flex items-center space-x-4">
+              <SystemStatus isOnline={true} />
+              <span>Dernière sync: maintenant</span>
+            </div>
+          </div>
+        </Container>
+      </div>
+    </main>
+  );
 }

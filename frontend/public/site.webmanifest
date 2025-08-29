@@ -1,0 +1,45 @@
+{
+  "name": "Tunisia Jockey Club",
+  "short_name": "TJC",
+  "description": "Institution hippique tunisienne certifiée IFHA depuis 1888",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#0F766E",
+  "orientation": "portrait-primary",
+  "categories": ["sports", "entertainment"],
+  "lang": "fr-TN",
+  "icons": [
+    {
+      "src": "/android-chrome-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/android-chrome-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/images/og/tjc-home-1280x640.jpg",
+      "sizes": "1280x640",
+      "type": "image/jpeg",
+      "label": "Page d'accueil Tunisia Jockey Club"
+    },
+    {
+      "src": "/images/og/tjc-dashboard-1280x640.jpg",
+      "sizes": "1280x640",
+      "type": "image/jpeg",
+      "label": "Dashboard professionnel IFHA"
+    }
+  ]
+}

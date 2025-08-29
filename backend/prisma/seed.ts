@@ -7,7 +7,6 @@ async function main() {
   console.log('🌱 Début du seeding de la base de données...');
 
   // Nettoyer les données existantes (en ordre pour respecter les contraintes FK)
-  await prisma.bet.deleteMany();
   await prisma.raceResult.deleteMany();
   await prisma.raceEntry.deleteMany();
   await prisma.race.deleteMany();

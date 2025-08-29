@@ -126,11 +126,8 @@ export const queryKeys = {
   raceDetail: (raceId: string) => ['races', raceId] as const,
   raceParticipants: (raceId: string) => ['races', raceId, 'participants'] as const,
   raceResults: (raceId: string) => ['races', raceId, 'results'] as const,
-  
-  // Queries paris
-  bets: ['bets'] as const,
-  userBets: (userId: string) => ['bets', 'user', userId] as const,
-  raceBets: (raceId: string) => ['bets', 'race', raceId] as const,
+  userRaces: (userId: string) => ['races', 'user', userId] as const,
+  raceEntries: (raceId: string) => ['races', 'entries', raceId] as const,
   
   // Queries statistiques
   stats: ['stats'] as const,
@@ -165,8 +162,8 @@ export function useRealtimeSync(enabled = false) {
   //       case 'race_updated':
   //         queryClient.setQueryData(queryKeys.raceDetail(data.raceId), data);
   //         break;
-  //       case 'new_bet':
-  //         queryClient.invalidateQueries({ queryKey: queryKeys.raceBets(data.raceId) });
+  //       case 'new_race':
+  //         queryClient.invalidateQueries({ queryKey: queryKeys.raceEntries(data.raceId) });
   //         break;
   //       case 'race_started':
   //         queryClient.invalidateQueries({ queryKey: queryKeys.races });

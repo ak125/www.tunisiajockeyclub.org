@@ -1,7 +1,9 @@
 import { Controller, Get } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
+import { Public } from '../auth/global-auth.guard';
 
 @Controller('test')
+@Public()
 export class TestController {
   constructor(private readonly supabaseService: SupabaseService) {}
 

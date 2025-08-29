@@ -806,7 +806,7 @@ export function LiveUpdates() {
                 {liveStats.activeBets}
               </motion.div>
             </AnimatePresence>
-            <div className="text-xs text-muted-foreground">Paris actifs</div>
+            <div className="text-xs text-muted-foreground">Courses actives</div>
           </div>
         </div>
 

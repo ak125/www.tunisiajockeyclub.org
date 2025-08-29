@@ -1,4 +1,3 @@
-import { getServerBuild } from '@fafa/frontend';
 import { All, Controller, Next, Req, Res } from '@nestjs/common';
 import { createRequestHandler } from '@remix-run/express';
 import { NextFunction, Request, Response } from 'express';
@@ -26,12 +25,26 @@ export class RemixController {
       return next();
     }
 
-    return createRequestHandler({
-      build: await getServerBuild(),
-      getLoadContext: () => ({
-        user: request.user,
-        remixService: this.remixService,
-      }),
-    })(request, response, next);
+    try {
+      // Import dynamique pour éviter que le contrôleur ne se charge pas si le frontend a un problème
+      const { getServerBuild } = await import('@fafa/frontend');
+      const build = await getServerBuild();
+      
+      return createRequestHandler({
+        build,
+        getLoadContext: () => ({
+          user: request.user,
+          remixService: this.remixService,
+        }),
+      })(request, response, next);
+    } catch (error: unknown) {
+      console.error('❌ Erreur lors du chargement du frontend:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
+      response.status(500).json({
+        error: 'Frontend non disponible',
+        message: 'Le serveur frontend ne peut pas être chargé. Vérifiez que le build frontend est correctement compilé.',
+        details: errorMessage
+      });
+    }
   }
 }

@@ -210,7 +210,6 @@ Créer la plateforme de référence pour les courses hippiques en Tunisie, offra
 - **Frontend**: Framer Motion + Recharts + Zustand
 - **Backend**: Socket.IO + Bull Queue + Swagger
 - **DevOps**: GitHub Actions CI/CD + Monitoring
-- **Testing**: Playwright E2E + Jest coverage 80%
 - **Performance**: CDN + Lazy loading + Bundle optimization
 
 ---
