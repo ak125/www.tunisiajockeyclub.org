@@ -13,7 +13,7 @@ PROJECT_NAME="tunisia-jockey-club"
 BASE_URL="http://localhost:3000"
 API_URL="$BASE_URL/api"
 TIMEOUT=30
-PARALLEL_TESTS=4 Avancé
+PARALLEL_TESTS=4
 
 echo "🚀 ======================================="
 echo "🏆 TUNISIA JOCKEY CLUB - TESTS AVANCÉS"

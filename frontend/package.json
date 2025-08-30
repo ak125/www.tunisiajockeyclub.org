@@ -10,7 +10,9 @@
     "old-dev": "remix vite:dev",
     "lint": "eslint --ignore-path .gitignore --cache --cache-location ./node_modules/.cache/eslint .",
     "start": "remix-serve ./build/server/index.js",
-    "typecheck": "tsc"
+    "typecheck": "tsc",
+    "dev:optimized": "vite --config vite.config.optimized.ts",
+    "build:optimized": "vite build --config vite.config.optimized.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.1",
@@ -22,7 +24,7 @@
     "@remix-run/react": "^2.15.0",
     "@remix-run/serve": "^2.15.0",
     "@supabase/supabase-js": "^2.56.0",
-    "@tanstack/react-query": "^5.85.5",
+    "@tanstack/react-query": "^5.85.6",
     "@tanstack/react-table": "^8.21.3",
     "@types/bcryptjs": "^3.0.0",
     "@types/ws": "^8.18.1",

@@ -1,0 +1,52 @@
+services:
+  app:
+    container_name: tjc-app
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runner
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - NODE_ENV=development
+      - DATABASE_URL=${DATABASE_URL}
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
+    ports:
+      - "3000:3000"
+      - "3001:3001"  # WebSocket
+    depends_on:
+      - redis
+    volumes:
+      - ./backend/prisma:/app/backend/prisma
+      - node_modules:/app/node_modules
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: tjc-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+      - ./redis.conf:/usr/local/etc/redis/redis.conf
+    command: redis-server /usr/local/etc/redis/redis.conf
+    restart: unless-stopped
+
+  # Optionnel: Base de données locale
+  postgres:
+    image: postgres:15-alpine
+    container_name: tjc-postgres
+    environment:
+      POSTGRES_DB: tunisia_jockey_club
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+volumes:
+  redis_data:
+  postgres_data:
+  node_modules:

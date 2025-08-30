@@ -10,7 +10,9 @@
     "typecheck": "turbo typecheck",
     "start": "cd backend && npm run start",
     "clean-node-modules": "find . -type d -name 'node_modules' -exec rm -rf {} + && find . -name 'package-lock.json' -exec rm -f {} +",
-    "clean-turbo-cache": "find . -name '.turbo' -type d -exec rm -rf {} +"
+    "clean-turbo-cache": "find . -name '.turbo' -type d -exec rm -rf {} +",
+    "dev:full": "docker-compose -f docker-compose.optimized.yml up --build",
+    "dev:services": "docker-compose -f docker-compose.optimized.yml up redis postgres"
   },
   "keywords": [],
   "author": "",
