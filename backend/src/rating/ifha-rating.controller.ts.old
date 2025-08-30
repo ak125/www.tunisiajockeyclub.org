@@ -1,0 +1,496 @@
+import {
+  Controller,
+  Get,
+  Post,@Controller('rating/ifha')
+export class IFHARatingController {
+  private readonly logger = new Logger(IFHARatingController.name);
+
+  constructor(
+    private readonly ratingCalculator: IFHARatingCalculatorService,
+    private readonly ifhaIntegration: IFHAIntegrationService,
+    private readonly prisma: PrismaService,
+  ) {}
+
+  /**
+   * Calcule automatiquement le rating IFHA d'un cheval
+   */
+  @Post('calculate/:horseId')
+  async calculateRating(@Param('horseId') horseId: string): Promise<RatingCalculationResult> {Param,
+  Query,
+  Logger,
+  BadRequestException,
+  NotFoundException,
+} from '@nestjs/common';
+import { IFHARatingCalculatorService, RatingCalculationResult } from './ifha-rating-calculator.service';
+import { IFHAIntegrationService } from './ifha-integration.service';
+import { PrismaService } from '../prisma/prisma.service';
+
+export interface ConversionRequest {
+  tunisianRating: number;
+  targetScale: 'france' | 'uk' | 'uae' | 'ifha';
+}
+
+export interface ManualRatingRequest {
+  horseId: string;
+  localRating: number;
+  adjustmentReason: string;
+  validatedBy: string;
+}
+
+export interface ImportReferenceRequest {
+  horseName: string;
+  country: string;
+  officialRating: number;
+  source: string;
+  category?: string;
+  age?: number;
+}
+
+@ApiTags('IFHA Rating System')
+@Controller('api/rating')
+export class IFHARatingController {
+  private readonly logger = new Logger(IFHARatingController.name);
+
+  constructor(
+    private ratingCalculator: IFHARatingCalculatorService,
+    private ifhaIntegration: IFHAIntegrationService,
+    private prisma: PrismaService,
+  ) {}
+
+  /**
+   * Calcule automatiquement le rating IFHA d'un cheval
+   */
+  @Post('calculate/:horseId')
+  @ApiOperation({ summary: 'Calcule le rating IFHA automatique d\'un cheval' })
+  @ApiResponse({ status: 200, description: 'Rating calculé avec succès' })
+  async calculateHorseRating(@Param('horseId') horseId: string): Promise<RatingCalculationResult> {
+    try {
+      // Récupérer les performances du cheval depuis la base
+      const horse = await this.prisma.horse.findUnique({
+        where: { id: horseId },
+        include: {
+          raceResults: {
+            include: {
+              race: {
+                include: {
+                  raceResults: {
+                    include: {
+                      horse: true,
+                    },
+                  },
+                },
+              },
+            },
+            orderBy: {
+              createdAt: 'desc',
+            },
+            take: 10,
+          },
+        },
+      });
+
+      if (!horse) {
+        throw new NotFoundException('Cheval non trouvé');
+      }
+
+      // Convertir les résultats en format attendu
+      const performances = horse.raceResults.map((result) => ({
+        position: result.position,
+        lengthsBehind: Number(result.lengthsBehind || 0),
+        weightCarried: Number(result.weightCarriedKg || 56),
+        distance: result.race.distanceMeters,
+        raceCategory: result.race.category,
+        terrainCondition: result.race.terrainState,
+        date: result.race.raceDate,
+        opponents: result.race.raceResults
+          .filter((r) => r.horseId !== horseId)
+          .map((r) => ({
+            name: r.horse.name,
+            position: r.position,
+            isInternational: false, // À déterminer selon la logique métier
+            knownRating: Number(r.horse.currentRating || 0),
+          })),
+      }));
+
+      const result = await this.ratingCalculator.calculateHorseRating(horseId, performances);
+      
+      this.logger.log(`✅ Rating calculé pour ${horse.name}: ${result.localRating}`);
+      return result;
+
+    } catch (error) {
+      this.logger.error(`❌ Erreur calcul rating pour ${horseId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Convertit un rating entre différentes échelles
+   */
+  @Post('convert')
+  @ApiOperation({ summary: 'Convertit un rating entre échelles internationales' })
+  async convertRating(@Body() request: ConversionRequest): Promise<{
+    original: number;
+    converted: number;
+    scale: string;
+    comment: string;
+  }> {
+    const { tunisianRating, targetScale } = request;
+
+    if (tunisianRating < 0 || tunisianRating > 100) {
+      throw new BadRequestException('Rating tunisien doit être entre 0 et 100');
+    }
+
+    const convertedRating = IFHARatingCalculatorService.convertRating(tunisianRating, targetScale);
+    
+    const scaleLabels = {
+      france: 'France Galop (kg)',
+      uk: 'UK BHA (lbs)',
+      uae: 'UAE ERA (kg)',
+      ifha: 'IFHA International',
+    };
+
+    const comments = {
+      france: 'Compatible avec les handicaps français',
+      uk: 'Compatible avec les handicaps britanniques',
+      uae: 'Compatible avec les courses UAE',
+      ifha: 'Standard international reconnu',
+    };
+
+    return {
+      original: tunisianRating,
+      converted: convertedRating,
+      scale: scaleLabels[targetScale],
+      comment: comments[targetScale],
+    };
+  }
+
+  /**
+   * Récupère la table de conversion complète
+   */
+  @Get('conversion-table')
+  @ApiOperation({ summary: 'Récupère la table de conversion IFHA' })
+  async getConversionTable() {
+    return {
+      table: IFHARatingCalculatorService.getConversionTable(),
+      lastUpdate: new Date().toISOString(),
+      source: 'IFHA Standard 2025',
+    };
+  }
+
+  /**
+   * Liste tous les ratings avec pagination et filtres
+   */
+  @Get('list')
+  @ApiOperation({ summary: 'Liste les ratings avec filtres' })
+  @ApiQuery({ name: 'page', required: false, description: 'Numéro de page' })
+  @ApiQuery({ name: 'limit', required: false, description: 'Nombre d\'éléments par page' })
+  @ApiQuery({ name: 'minRating', required: false, description: 'Rating minimum' })
+  @ApiQuery({ name: 'maxRating', required: false, description: 'Rating maximum' })
+  @ApiQuery({ name: 'validated', required: false, description: 'Seulement les validés' })
+  async listRatings(
+    @Query('page') page = 1,
+    @Query('limit') limit = 20,
+    @Query('minRating') minRating?: number,
+    @Query('maxRating') maxRating?: number,
+    @Query('validated') validated?: boolean,
+  ) {
+    const skip = (page - 1) * limit;
+    
+    const where: any = {
+      isCurrent: true,
+    };
+
+    if (minRating !== undefined || maxRating !== undefined) {
+      where.localRating = {};
+      if (minRating !== undefined) where.localRating.gte = minRating;
+      if (maxRating !== undefined) where.localRating.lte = maxRating;
+    }
+
+    if (validated !== undefined) {
+      where.isValidated = validated;
+    }
+
+    const [ratings, total] = await Promise.all([
+      this.prisma.horseRating.findMany({
+        where,
+        include: {
+          horse: {
+            select: {
+              id: true,
+              name: true,
+              registrationNumber: true,
+            },
+          },
+        },
+        orderBy: {
+          localRating: 'desc',
+        },
+        skip,
+        take: limit,
+      }),
+      this.prisma.horseRating.count({ where }),
+    ]);
+
+    return {
+      data: ratings,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  }
+
+  /**
+   * Récupère le détail d'un rating
+   */
+  @Get(':horseId')
+  @ApiOperation({ summary: 'Détail du rating d\'un cheval' })
+  async getRatingDetail(@Param('horseId') horseId: string) {
+    const horse = await this.prisma.horse.findUnique({
+      where: { id: horseId },
+      include: {
+        ratings: {
+          orderBy: { createdAt: 'desc' },
+          take: 5,
+        },
+        ratingHistory: {
+          orderBy: { changedAt: 'desc' },
+          take: 10,
+        },
+      },
+    });
+
+    if (!horse) {
+      throw new NotFoundException('Cheval non trouvé');
+    }
+
+    const currentRating = horse.ratings.find((r) => r.isCurrent);
+    
+    return {
+      horse: {
+        id: horse.id,
+        name: horse.name,
+        registrationNumber: horse.registrationNumber,
+      },
+      currentRating,
+      history: horse.ratings,
+      adjustments: horse.ratingHistory,
+    };
+  }
+
+  /**
+   * Valide un rating manuellement
+   */
+  @Put('validate/:ratingId')
+  @ApiOperation({ summary: 'Valide un rating manuellement' })
+  async validateRating(
+    @Param('ratingId') ratingId: string,
+    @Body() data: { validatedBy: string; notes?: string }
+  ) {
+    const rating = await this.prisma.horseRating.findUnique({
+      where: { id: ratingId },
+    });
+
+    if (!rating) {
+      throw new NotFoundException('Rating non trouvé');
+    }
+
+    const updatedRating = await this.prisma.horseRating.update({
+      where: { id: ratingId },
+      data: {
+        isValidated: true,
+        validatedBy: data.validatedBy,
+        validatedAt: new Date(),
+        notes: data.notes,
+      },
+    });
+
+    this.logger.log(`✅ Rating ${ratingId} validé par ${data.validatedBy}`);
+    return updatedRating;
+  }
+
+  /**
+   * Ajuste un rating manuellement
+   */
+  @Put('adjust/:horseId')
+  @ApiOperation({ summary: 'Ajuste un rating manuellement' })
+  async adjustRating(
+    @Param('horseId') horseId: string,
+    @Body() request: ManualRatingRequest
+  ) {
+    const currentRating = await this.prisma.horseRating.findFirst({
+      where: {
+        horseId,
+        isCurrent: true,
+      },
+    });
+
+    if (!currentRating) {
+      throw new NotFoundException('Pas de rating courant trouvé');
+    }
+
+    // Désactiver l'ancien rating
+    await this.prisma.horseRating.update({
+      where: { id: currentRating.id },
+      data: { isCurrent: false },
+    });
+
+    // Créer le nouveau rating
+    const newRating = await this.prisma.horseRating.create({
+      data: {
+        horseId,
+        localRating: request.localRating,
+        ratingType: 'manual',
+        adjustmentReason: request.adjustmentReason,
+        isValidated: true,
+        validatedBy: request.validatedBy,
+        validatedAt: new Date(),
+        isCurrent: true,
+        assignedBy: request.validatedBy,
+      },
+    });
+
+    // Enregistrer l'historique
+    await this.prisma.ratingHistory.create({
+      data: {
+        horseId,
+        oldRating: currentRating.localRating,
+        newRating: request.localRating,
+        changeReason: request.adjustmentReason,
+        changedBy: request.validatedBy,
+      },
+    });
+
+    this.logger.log(`✅ Rating ajusté pour ${horseId}: ${request.localRating}`);
+    return newRating;
+  }
+
+  /**
+   * Soumet un rating à l'IFHA
+   */
+  @Post('submit-ifha/:horseId')
+  @ApiOperation({ summary: 'Soumet un rating à l\'IFHA pour validation' })
+  async submitToIFHA(@Param('horseId') horseId: string) {
+    const result = await this.ifhaIntegration.submitRatingToIFHA(horseId);
+    
+    if (result.success) {
+      this.logger.log(`✅ Rating soumis à l'IFHA pour ${horseId}`);
+    }
+    
+    return result;
+  }
+
+  /**
+   * Importe une référence internationale
+   */
+  @Post('import-reference')
+  @ApiOperation({ summary: 'Importe une référence internationale' })
+  async importReference(@Body() request: ImportReferenceRequest) {
+    await this.ifhaIntegration.importInternationalReference(request);
+    
+    this.logger.log(`✅ Référence importée: ${request.horseName} (${request.country})`);
+    return { success: true, message: 'Référence importée avec succès' };
+  }
+
+  /**
+   * Déclenche une synchronisation IFHA manuelle
+   */
+  @Post('sync-ifha')
+  @ApiOperation({ summary: 'Synchronisation IFHA manuelle' })
+  async syncIFHA() {
+    await this.ifhaIntegration.syncIFHARatings();
+    
+    const stats = await this.ifhaIntegration.getSyncStatistics();
+    
+    return {
+      success: true,
+      message: 'Synchronisation IFHA terminée',
+      statistics: stats,
+    };
+  }
+
+  /**
+   * Récupère les chevaux tunisiens dans le classement IFHA
+   */
+  @Get('world-rankings/tunisia')
+  @ApiOperation({ summary: 'Chevaux tunisiens dans le classement mondial IFHA' })
+  async getTunisianWorldRankings() {
+    const horses = await this.ifhaIntegration.getTunisianHorsesInWorldRankings();
+    
+    return {
+      horses,
+      total: horses.length,
+      lastUpdate: new Date().toISOString(),
+    };
+  }
+
+  /**
+   * Statistiques globales du système de rating
+   */
+  @Get('statistics')
+  @ApiOperation({ summary: 'Statistiques globales du système' })
+  async getStatistics() {
+    const [
+      totalRatings,
+      validatedRatings,
+      avgRating,
+      recentCalculations,
+      ifhaStats,
+    ] = await Promise.all([
+      this.prisma.horseRating.count({ where: { isCurrent: true } }),
+      this.prisma.horseRating.count({ where: { isCurrent: true, isValidated: true } }),
+      this.prisma.horseRating.aggregate({
+        where: { isCurrent: true },
+        _avg: { localRating: true },
+      }),
+      this.prisma.horseRating.count({
+        where: {
+          createdAt: {
+            gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), // 7 derniers jours
+          },
+        },
+      }),
+      this.ifhaIntegration.getSyncStatistics(),
+    ]);
+
+    const ratingDistribution = await this.prisma.horseRating.groupBy({
+      by: ['localRating'],
+      where: { isCurrent: true },
+      _count: true,
+    });
+
+    // Organiser par tranches
+    const distribution = {
+      '90+': 0,
+      '80-89': 0,
+      '70-79': 0,
+      '60-69': 0,
+      '50-59': 0,
+      '<50': 0,
+    };
+
+    ratingDistribution.forEach((item) => {
+      const rating = Number(item.localRating);
+      if (rating >= 90) distribution['90+'] += item._count;
+      else if (rating >= 80) distribution['80-89'] += item._count;
+      else if (rating >= 70) distribution['70-79'] += item._count;
+      else if (rating >= 60) distribution['60-69'] += item._count;
+      else if (rating >= 50) distribution['50-59'] += item._count;
+      else distribution['<50'] += item._count;
+    });
+
+    return {
+      overview: {
+        totalRatings,
+        validatedRatings,
+        averageRating: Math.round(Number(avgRating._avg.localRating || 0) * 10) / 10,
+        recentCalculations,
+      },
+      distribution,
+      ifha: ifhaStats,
+      lastUpdate: new Date().toISOString(),
+    };
+  }
+}

@@ -1,0 +1,529 @@
+import { Injectable, Logger } from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
+import { Decimal } from '@prisma/client/runtime/library';
+
+export enum TerrainState {
+  BON = 'bon',
+  SOUPLE = 'souple', 
+  LOURD = 'lourd',
+  TRES_LOURD = 'très lourd'
+}
+
+export enum RaceCategory {
+  GROUPE1 = 'Groupe I',
+  GROUPE2 = 'Groupe II',
+  GROUPE3 = 'Groupe III',
+  LISTED = 'Listed',
+  HANDICAP = 'Handicap',
+  CONDITIONS = 'Conditions',
+  MAIDEN = 'Maiden',
+  RECLAMER = 'Réclamer'
+}
+
+interface RatingCalculationResult {
+  horseId: string;
+  performanceRating: number;
+  ratingAdjustment: number;
+  reason: string;
+}
+
+@Injectable()
+export class RatingCalculatorService {
+  private readonly logger = new Logger(RatingCalculatorService.name);
+
+  // Constantes de conversion longueur/poids selon distance
+  private readonly LENGTH_TO_WEIGHT = {
+    1200: 2.0,      // 1 longueur = 2kg sur 1200m
+    1400: 1.5,      // 1 longueur = 1.5kg sur 1400m
+    1600: 1.25,     // 1 longueur = 1.25kg sur 1600m
+    1800: 1.0,      // 1 longueur = 1kg sur 1800m
+    2000: 1.0,      // 1 longueur = 1kg sur 2000m
+    2400: 0.67,     // 1 longueur = 0.67kg sur 2400m
+    3000: 0.5       // 1 longueur = 0.5kg sur 3000m+
+  };
+
+  // Valeurs plancher conventionnelles
+  private readonly BASE_RATINGS = {
+    male_3ans_maiden: 30.0,
+    female_3ans_maiden: 28.5,
+    male_4ans_maiden: 32.0,
+    female_4ans_maiden: 30.5
+  };
+
+  // Ajustements par catégorie de course
+  private readonly CATEGORY_ADJUSTMENTS = {
+    [RaceCategory.GROUPE1]: 3.0,
+    [RaceCategory.GROUPE2]: 2.0,
+    [RaceCategory.GROUPE3]: 1.0,
+    [RaceCategory.LISTED]: 0.5,
+    [RaceCategory.HANDICAP]: 0.0,
+    [RaceCategory.CONDITIONS]: -0.5,
+    [RaceCategory.MAIDEN]: -1.0,
+    [RaceCategory.RECLAMER]: -2.0
+  };
+
+  // Ajustements terrain
+  private readonly TERRAIN_ADJUSTMENTS = {
+    [TerrainState.BON]: 0.0,
+    [TerrainState.SOUPLE]: 0.5,
+    [TerrainState.LOURD]: 1.0,
+    [TerrainState.TRES_LOURD]: 1.5
+  };
+
+  constructor(private prisma: PrismaService) {}
+
+  /**
+   * Calcule le rating initial d'un cheval après 3 courses minimum
+   */
+  async calculateInitialRating(horseId: string): Promise<number> {
+    const horse = await this.prisma.horse.findUnique({
+      where: { id: horseId },
+      include: {
+        raceResults: {
+          include: { race: true },
+          orderBy: { createdAt: 'asc' },
+          take: 3
+        }
+      }
+    });
+
+    if (!horse) {
+      throw new Error('Cheval non trouvé');
+    }
+
+    if (horse.raceResults.length < 3) {
+      throw new Error('Un minimum de 3 courses est requis pour établir un rating initial');
+    }
+
+    // Analyser les 3 premières performances
+    const performanceValues = [];
+    for (const result of horse.raceResults) {
+      const perfValue = this.analyzeSinglePerformance(result, result.race);
+      if (perfValue !== null) {
+        performanceValues.push(perfValue);
+      }
+    }
+
+    if (performanceValues.length === 0) {
+      // Appliquer valeur plancher conventionnelle
+      return this.getConventionalRating(horse);
+    }
+
+    // Moyenne pondérée (plus de poids aux performances récentes)
+    const weights = [0.2, 0.3, 0.5];
+    let weightedSum = 0;
+    let totalWeight = 0;
+
+    for (let i = 0; i < Math.min(performanceValues.length, 3); i++) {
+      const weight = weights[i] || 0.33;
+      weightedSum += performanceValues[i] * weight;
+      totalWeight += weight;
+    }
+
+    return Math.round((weightedSum / totalWeight) * 10) / 10;
+  }
+
+  /**
+   * Calcule les ratings de performance pour tous les chevaux d'une course
+   */
+  async calculateRaceRatings(raceId: string): Promise<RatingCalculationResult[]> {
+    const race = await this.prisma.race.findUnique({
+      where: { id: raceId },
+      include: {
+        raceResults: {
+          include: { horse: true },
+          orderBy: { position: 'asc' }
+        }
+      }
+    });
+
+    if (!race || !race.raceResults.length) {
+      throw new Error('Course ou résultats non trouvés');
+    }
+
+    // Trouver le cheval repère
+    const referenceHorse = await this.findReferenceHorse(race.raceResults);
+    
+    if (!referenceHorse) {
+      this.logger.warn(`Aucun cheval repère trouvé pour la course ${raceId}`);
+      return this.calculateWithoutReference(race.raceResults, race);
+    }
+
+    // Calculer les ratings relatifs au cheval repère
+    const results: RatingCalculationResult[] = [];
+    const refResult = race.raceResults.find(r => r.horseId === referenceHorse.horseId)!;
+    const refCurrentRating = await this.getCurrentRating(referenceHorse.horseId);
+
+    for (const result of race.raceResults) {
+      // Calculer l'écart avec le cheval repère
+      const weightDiff = this.getWeightDifference(result, refResult);
+      const distanceDiff = this.calculateDistanceDifference(result, refResult, race.distanceMeters);
+
+      // Appliquer la formule
+      let performanceRating = refCurrentRating + weightDiff + distanceDiff;
+
+      // Ajustements supplémentaires
+      performanceRating += this.applyAdjustments(result, race);
+
+      // Calculer l'ajustement proposé
+      const currentRating = await this.getCurrentRating(result.horseId);
+      const { newRating, reason } = this.calculateRatingAdjustment(
+        result,
+        performanceRating,
+        currentRating
+      );
+
+      results.push({
+        horseId: result.horseId,
+        performanceRating: Math.round(performanceRating * 10) / 10,
+        ratingAdjustment: Math.round((newRating - currentRating) * 10) / 10,
+        reason
+      });
+    }
+
+    return results;
+  }
+
+  /**
+   * Ajuste le rating d'un cheval après une nouvelle performance
+   */
+  private calculateRatingAdjustment(
+    raceResult: any,
+    performanceRating: number,
+    currentRating: number
+  ): { newRating: number; reason: string } {
+    const expectedDiff = performanceRating - currentRating;
+    let adjustment = 0;
+    let reason = '';
+
+    if (raceResult.position === 1) {
+      // Gagnant
+      if (expectedDiff > 3) {
+        adjustment = Math.min(3.0, expectedDiff * 0.7);
+        reason = `Victoire facile (+${expectedDiff.toFixed(1)}kg de marge)`;
+      } else if (expectedDiff > 0) {
+        adjustment = expectedDiff * 0.5;
+        reason = 'Victoire confirmant la progression';
+      } else {
+        adjustment = 0.5; // Minimum pour un gagnant
+        reason = 'Victoire sans surclassement';
+      }
+    } else {
+      // Non-gagnant
+      if (expectedDiff > 2) {
+        adjustment = Math.min(2.0, expectedDiff * 0.6);
+        reason = 'Excellente performance (battu de peu)';
+      } else if (expectedDiff > -2) {
+        adjustment = expectedDiff * 0.3;
+        reason = 'Performance conforme aux attentes';
+      } else {
+        adjustment = Math.max(-2.0, expectedDiff * 0.4);
+        reason = 'Contre-performance à confirmer';
+      }
+    }
+
+    const newRating = Math.max(20.0, Math.min(55.0, currentRating + adjustment));
+    return { newRating, reason };
+  }
+
+  /**
+   * Enregistre un nouveau rating pour un cheval
+   */
+  async updateHorseRating(
+    horseId: string,
+    newRating: number,
+    ratingType: string,
+    reason: string,
+    raceId?: string,
+    assignedBy?: string
+  ): Promise<void> {
+    await this.prisma.$transaction(async (tx) => {
+      // Récupérer l'ancien rating
+      const currentRating = await tx.horseRating.findFirst({
+        where: { horseId, isCurrent: true }
+      });
+
+      // Désactiver l'ancien rating
+      if (currentRating) {
+        await tx.horseRating.update({
+          where: { id: currentRating.id },
+          data: { isCurrent: false }
+        });
+      }
+
+      // Créer le nouveau rating
+      await tx.horseRating.create({
+        data: {
+          horseId,
+          ratingValue: new Decimal(newRating),
+          previousValue: currentRating ? currentRating.ratingValue : null,
+          ratingType,
+          assignedBy,
+          notes: reason
+        }
+      });
+
+      // Mettre à jour le rating courant du cheval
+      await tx.horse.update({
+        where: { id: horseId },
+        data: { currentRating: new Decimal(newRating) }
+      });
+
+      // Ajouter à l'historique
+      await tx.ratingHistory.create({
+        data: {
+          horseId,
+          oldRating: currentRating ? currentRating.ratingValue : null,
+          newRating: new Decimal(newRating),
+          changeReason: reason,
+          raceId,
+          changedBy: assignedBy || 'System'
+        }
+      });
+    });
+
+    this.logger.log(`Rating mis à jour pour le cheval ${horseId}: ${newRating} (${reason})`);
+  }
+
+  /**
+   * Obtient le rating actuel d'un cheval
+   */
+  private async getCurrentRating(horseId: string): Promise<number> {
+    const rating = await this.prisma.horseRating.findFirst({
+      where: { horseId, isCurrent: true }
+    });
+
+    return rating ? Number(rating.ratingValue) : 0;
+  }
+
+  /**
+   * Analyse une performance individuelle
+   */
+  private analyzeSinglePerformance(raceResult: any, race: any): number | null {
+    if (raceResult.position > 10 || raceResult.position === 0) {
+      return null; // Performance non significative
+    }
+
+    // Base sur la position et les écarts
+    let baseValue = 35.0; // Valeur médiane
+
+    // Ajustement position (meilleure position = valeur plus élevée)
+    const positionAdj = (6 - raceResult.position) * 1.5;
+
+    // Ajustement écart
+    let distanceAdj = 0;
+    if (raceResult.lengthsBehind) {
+      const conversionFactor = this.getLengthWeightConversion(race.distanceMeters);
+      distanceAdj = -Number(raceResult.lengthsBehind) * conversionFactor;
+    }
+
+    // Ajustement poids (56kg = référence)
+    const weightAdj = raceResult.weightCarriedKg ? 
+      (Number(raceResult.weightCarriedKg) - 56) * 0.5 : 0;
+
+    return baseValue + positionAdj + distanceAdj + weightAdj;
+  }
+
+  /**
+   * Obtient le facteur de conversion longueur/poids selon la distance
+   */
+  private getLengthWeightConversion(distance: number): number {
+    const distances = Object.keys(this.LENGTH_TO_WEIGHT)
+      .map(Number)
+      .sort((a, b) => a - b);
+    
+    for (const d of distances) {
+      if (distance <= d) {
+        return this.LENGTH_TO_WEIGHT[d];
+      }
+    }
+    
+    return this.LENGTH_TO_WEIGHT[distances[distances.length - 1]];
+  }
+
+  /**
+   * Détermine la valeur plancher conventionnelle
+   */
+  private getConventionalRating(horse: any): number {
+    const birthDate = new Date(horse.dateOfBirth);
+    const age = new Date().getFullYear() - birthDate.getFullYear();
+    const isFemale = horse.sex?.toLowerCase() === 'f' || 
+                     horse.sex?.toLowerCase() === 'femelle' ||
+                     horse.sex?.toLowerCase() === 'jument';
+
+    if (age === 3) {
+      return isFemale ? this.BASE_RATINGS.female_3ans_maiden : this.BASE_RATINGS.male_3ans_maiden;
+    } else if (age === 4) {
+      return isFemale ? this.BASE_RATINGS.female_4ans_maiden : this.BASE_RATINGS.male_4ans_maiden;
+    } else {
+      // Chevaux plus âgés
+      const base = isFemale ? 32.0 : 34.0;
+      return base - (age - 4) * 0.5; // Légère diminution avec l'âge
+    }
+  }
+
+  /**
+   * Trouve le cheval repère le plus fiable dans une course
+   */
+  private async findReferenceHorse(raceResults: any[]): Promise<any> {
+    const candidates = [];
+
+    for (const result of raceResults) {
+      const currentRating = await this.getCurrentRating(result.horseId);
+      if (currentRating > 0) {
+        // Évaluer la stabilité du rating
+        const recentRatings = await this.prisma.ratingHistory.findMany({
+          where: { horseId: result.horseId },
+          orderBy: { changedAt: 'desc' },
+          take: 5
+        });
+
+        if (recentRatings.length >= 3) {
+          // Calculer la variance des derniers ratings
+          const ratings = recentRatings.map(h => Number(h.newRating));
+          const avg = ratings.reduce((sum, r) => sum + r, 0) / ratings.length;
+          const variance = ratings.reduce((sum, r) => sum + Math.pow(r - avg, 2), 0) / ratings.length;
+          const stability = 1 / (1 + variance); // Plus stable = score plus élevé
+
+          candidates.push({ ...result, stability });
+        }
+      }
+    }
+
+    if (candidates.length > 0) {
+      // Retourner le cheval le plus stable
+      candidates.sort((a, b) => b.stability - a.stability);
+      return candidates[0];
+    }
+
+    return null;
+  }
+
+  /**
+   * Calcule les ratings sans cheval repère (méthode alternative)
+   */
+  private calculateWithoutReference(raceResults: any[], race: any): RatingCalculationResult[] {
+    const results: RatingCalculationResult[] = [];
+    const baseRating = 32.0;
+
+    for (let i = 0; i < raceResults.length; i++) {
+      const result = raceResults[i];
+      
+      // Ajustement basé sur la position
+      const positionAdj = (raceResults.length - result.position) * 0.5;
+      
+      // Ajustement basé sur l'écart
+      let distanceAdj = 0;
+      if (i > 0 && result.lengthsBehind) {
+        distanceAdj = -Number(result.lengthsBehind) * 1.0; // Défaut 1kg/longueur
+      }
+
+      const performanceRating = baseRating + positionAdj + distanceAdj;
+
+      results.push({
+        horseId: result.horseId,
+        performanceRating: Math.round(performanceRating * 10) / 10,
+        ratingAdjustment: 0, // Pas d'ajustement sans référence fiable
+        reason: 'Calculé sans cheval repère'
+      });
+    }
+
+    return results;
+  }
+
+  /**
+   * Calcule la différence de poids entre deux chevaux
+   */
+  private getWeightDifference(result1: any, result2: any): number {
+    const weight1 = result1.weightCarriedKg ? Number(result1.weightCarriedKg) : 56;
+    const weight2 = result2.weightCarriedKg ? Number(result2.weightCarriedKg) : 56;
+    return weight1 - weight2;
+  }
+
+  /**
+   * Calcule la différence en kg basée sur l'écart en longueurs
+   */
+  private calculateDistanceDifference(result1: any, result2: any, raceDistance: number): number {
+    const lengths1 = result1.lengthsBehind ? Number(result1.lengthsBehind) : 0;
+    const lengths2 = result2.lengthsBehind ? Number(result2.lengthsBehind) : 0;
+    
+    let distanceDiff: number;
+    if (result1.position < result2.position) {
+      // result1 devant result2
+      distanceDiff = lengths2 - lengths1;
+    } else {
+      // result1 derrière result2
+      distanceDiff = -(lengths1 - lengths2);
+    }
+
+    // Convertir en kg
+    const conversionFactor = this.getLengthWeightConversion(raceDistance);
+    return distanceDiff * conversionFactor;
+  }
+
+  /**
+   * Applique les ajustements contextuels
+   */
+  private applyAdjustments(raceResult: any, race: any): number {
+    let adjustment = 0;
+
+    // Ajustement catégorie de course
+    if (race.category && this.CATEGORY_ADJUSTMENTS[race.category]) {
+      adjustment += this.CATEGORY_ADJUSTMENTS[race.category];
+    }
+
+    // Ajustement terrain
+    if (race.terrainState && this.TERRAIN_ADJUSTMENTS[race.terrainState]) {
+      adjustment += this.TERRAIN_ADJUSTMENTS[race.terrainState];
+    }
+
+    return adjustment;
+  }
+
+  /**
+   * Obtient les statistiques générales des ratings
+   */
+  async getRatingStatistics(): Promise<any> {
+    const totalHorses = await this.prisma.horseRating.count({
+      where: { isCurrent: true }
+    });
+
+    const avgRating = await this.prisma.horseRating.aggregate({
+      where: { isCurrent: true },
+      _avg: { ratingValue: true }
+    });
+
+    // Distribution par tranches
+    const ranges = [
+      { min: 20, max: 25 },
+      { min: 25, max: 30 },
+      { min: 30, max: 35 },
+      { min: 35, max: 40 },
+      { min: 40, max: 45 },
+      { min: 45, max: 50 },
+      { min: 50, max: 55 }
+    ];
+
+    const distribution = {};
+    for (const range of ranges) {
+      const count = await this.prisma.horseRating.count({
+        where: {
+          isCurrent: true,
+          ratingValue: {
+            gte: range.min,
+            lt: range.max
+          }
+        }
+      });
+      distribution[`${range.min}-${range.max}kg`] = count;
+    }
+
+    return {
+      totalHorsesRated: totalHorses,
+      averageRating: avgRating._avg.ratingValue ? 
+        Math.round(Number(avgRating._avg.ratingValue) * 10) / 10 : 0,
+      distribution,
+      lastUpdate: new Date()
+    };
+  }
+}

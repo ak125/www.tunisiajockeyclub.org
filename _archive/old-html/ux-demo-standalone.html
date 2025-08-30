@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Démonstration UX - Tunisia Jockey Club</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom animations */
+        @keyframes slideInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        @keyframes bounce-subtle {
+            0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+            40% { transform: translateY(-5px); }
+            60% { transform: translateY(-3px); }
+        }
+        
+        @keyframes glow {
+            0%, 100% { box-shadow: 0 0 10px rgba(59, 130, 246, 0.3); }
+            50% { box-shadow: 0 0 20px rgba(59, 130, 246, 0.6); }
+        }
+        
+        .animate-slideInUp { animation: slideInUp 0.6s ease-out; }
+        .animate-bounce-subtle { animation: bounce-subtle 0.8s ease-in-out; }
+        .animate-glow { animation: glow 2s infinite; }
+        
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .theme-turf-green { --primary-color: rgb(45, 80, 22); }
+        .theme-blue { --primary-color: rgb(59, 130, 246); }
+        .theme-purple { --primary-color: rgb(168, 85, 247); }
+        .theme-emerald { --primary-color: rgb(16, 185, 129); }
+        .theme-amber { --primary-color: rgb(245, 158, 11); }
+        .theme-rose { --primary-color: rgb(236, 72, 153); }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary-color, rgb(45, 80, 22)), var(--primary-color, rgb(45, 80, 22)));
+            filter: brightness(1.1);
+        }
+        
+        .btn-primary:hover {
+            filter: brightness(1.2);
+            transform: translateY(-2px);
+        }
+    </style>
+    <script>
+        // Système de thèmes simple
+        let currentTheme = 'turf-green';
+        let animationsEnabled = true;
+        
+        function changeTheme(theme) {
+            currentTheme = theme;
+            document.body.className = `theme-${theme} transition-all duration-500`;
+            document.documentElement.style.setProperty('--primary-color', getThemeColor(theme));
+            
+            // Animation de confirmation
+            const button = document.querySelector(`[data-theme="${theme}"]`);
+            if (button && animationsEnabled) {
+                button.classList.add('animate-bounce-subtle');
+                setTimeout(() => button.classList.remove('animate-bounce-subtle'), 800);
+            }
+            
+            updateStats();
+        }
+        
+        function getThemeColor(theme) {
+            const colors = {
+                'turf-green': 'rgb(45, 80, 22)',
+                'blue': 'rgb(59, 130, 246)',
+                'purple': 'rgb(168, 85, 247)',
+                'emerald': 'rgb(16, 185, 129)',
+                'amber': 'rgb(245, 158, 11)',
+                'rose': 'rgb(236, 72, 153)'
+            };
+            return colors[theme] || colors['turf-green'];
+        }
+        
+        function toggleAnimations() {
+            animationsEnabled = !animationsEnabled;
+            const button = document.getElementById('toggle-animations');
+            button.textContent = animationsEnabled ? '🎭 Animations ON' : '🎭 Animations OFF';
+            button.className = animationsEnabled ? 
+                'px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-all' :
+                'px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-all';
+            
+            // Disable/enable animations globally
+            if (!animationsEnabled) {
+                document.querySelectorAll('[class*="animate-"]').forEach(el => {
+                    el.style.animation = 'none';
+                });
+            }
+        }
+        
+        function updateStats() {
+            const stats = {
+                theme: currentTheme,
+                animations: animationsEnabled ? 'Activées' : 'Désactivées',
+                horses: 45 + Math.floor(Math.random() * 10),
+                users: 10 + Math.floor(Math.random() * 5),
+                races: 5 + Math.floor(Math.random() * 3)
+            };
+            
+            document.getElementById('current-theme').textContent = currentTheme;
+            document.getElementById('animations-status').textContent = stats.animations;
+            document.getElementById('horses-count').textContent = stats.horses;
+            document.getElementById('users-count').textContent = stats.users;
+            document.getElementById('races-count').textContent = stats.races;
+        }
+        
+        function simulateDataLoad() {
+            const loadingSpinner = document.getElementById('loading-spinner');
+            const dataContent = document.getElementById('data-content');
+            
+            loadingSpinner.classList.remove('hidden');
+            dataContent.classList.add('opacity-50');
+            
+            setTimeout(() => {
+                loadingSpinner.classList.add('hidden');
+                dataContent.classList.remove('opacity-50');
+                updateStats();
+                
+                if (animationsEnabled) {
+                    dataContent.classList.add('animate-slideInUp');
+                    setTimeout(() => dataContent.classList.remove('animate-slideInUp'), 600);
+                }
+            }, 2000);
+        }
+        
+        // Initialize on page load
+        window.addEventListener('load', () => {
+            changeTheme('turf-green');
+            updateStats();
+            
+            // Animate elements on load
+            setTimeout(() => {
+                document.querySelectorAll('.fade-in-on-load').forEach((el, index) => {
+                    setTimeout(() => {
+                        el.classList.add('animate-slideInUp');
+                        el.style.opacity = '1';
+                    }, index * 200);
+                });
+            }, 100);
+        });
+    </script>
+</head>
+<body class="theme-turf-green bg-gradient-to-br from-gray-100 via-blue-50 to-green-50 min-h-screen">
+    
+    <!-- Header -->
+    <div class="glass-effect sticky top-0 z-50 border-b">
+        <div class="max-w-7xl mx-auto px-4 py-4">
+            <div class="flex flex-col sm:flex-row items-center justify-between gap-4 fade-in-on-load" style="opacity: 0;">
+                <div class="text-center sm:text-left">
+                    <h1 class="text-3xl font-bold text-gray-800">
+                        🎨 Tunisia Jockey Club - UX Demo
+                    </h1>
+                    <p class="text-gray-600 mt-1">Système de personnalisation avancé</p>
+                </div>
+                
+                <!-- Theme selector -->
+                <div class="flex items-center gap-2 flex-wrap">
+                    <span class="text-sm text-gray-600 mr-2">Thèmes:</span>
+                    <button data-theme="turf-green" onclick="changeTheme('turf-green')" 
+                            class="w-8 h-8 bg-green-600 rounded-full border-2 border-white shadow-lg hover:scale-110 transition-all" title="Hippique"></button>
+                    <button data-theme="blue" onclick="changeTheme('blue')" 
+                            class="w-8 h-8 bg-blue-600 rounded-full border-2 border-gray-300 hover:scale-110 transition-all" title="Classique"></button>
+                    <button data-theme="purple" onclick="changeTheme('purple')" 
+                            class="w-8 h-8 bg-purple-600 rounded-full border-2 border-gray-300 hover:scale-110 transition-all" title="Royal"></button>
+                    <button data-theme="emerald" onclick="changeTheme('emerald')" 
+                            class="w-8 h-8 bg-emerald-600 rounded-full border-2 border-gray-300 hover:scale-110 transition-all" title="Émeraude"></button>
+                    <button data-theme="amber" onclick="changeTheme('amber')" 
+                            class="w-8 h-8 bg-amber-600 rounded-full border-2 border-gray-300 hover:scale-110 transition-all" title="Doré"></button>
+                    <button data-theme="rose" onclick="changeTheme('rose')" 
+                            class="w-8 h-8 bg-rose-600 rounded-full border-2 border-gray-300 hover:scale-110 transition-all" title="Rose"></button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="max-w-7xl mx-auto px-4 py-8">
+        
+        <!-- Controls -->
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 fade-in-on-load" style="opacity: 0;">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4 sm:mb-0">📊 Données en Temps Réel</h2>
+            <div class="flex gap-3">
+                <button onclick="simulateDataLoad()" 
+                        class="px-4 py-2 btn-primary text-white rounded-lg hover:shadow-lg transition-all">
+                    🔄 Actualiser les Données
+                </button>
+                <button id="toggle-animations" onclick="toggleAnimations()" 
+                        class="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-all">
+                    🎭 Animations ON
+                </button>
+            </div>
+        </div>
+
+        <!-- Stats Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8 fade-in-on-load" style="opacity: 0;" id="data-content">
+            
+            <!-- Loading Spinner -->
+            <div id="loading-spinner" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                <div class="bg-white p-8 rounded-xl shadow-2xl text-center">
+                    <div class="animate-spin w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+                    <p class="text-gray-600">Actualisation des données...</p>
+                </div>
+            </div>
+            
+            <!-- Stat Cards -->
+            <div class="glass-effect p-6 rounded-xl text-center border-l-4 border-green-500 hover:shadow-lg transition-all">
+                <div class="text-4xl mb-3">🐎</div>
+                <h3 class="text-lg font-semibold text-gray-800 mb-2">Chevaux</h3>
+                <div class="text-3xl font-bold text-gray-800 mb-2" id="horses-count">45</div>
+                <p class="text-sm text-gray-600">Total enregistrés</p>
+            </div>
+            
+            <div class="glass-effect p-6 rounded-xl text-center border-l-4 border-blue-500 hover:shadow-lg transition-all">
+                <div class="text-4xl mb-3">👥</div>
+                <h3 class="text-lg font-semibold text-gray-800 mb-2">Utilisateurs</h3>
+                <div class="text-3xl font-bold text-gray-800 mb-2" id="users-count">10</div>
+                <p class="text-sm text-gray-600">Utilisateurs actifs</p>
+            </div>
+            
+            <div class="glass-effect p-6 rounded-xl text-center border-l-4 border-purple-500 hover:shadow-lg transition-all">
+                <div class="text-4xl mb-3">🏁</div>
+                <h3 class="text-lg font-semibold text-gray-800 mb-2">Courses</h3>
+                <div class="text-3xl font-bold text-gray-800 mb-2" id="races-count">5</div>
+                <p class="text-sm text-gray-600">Programmées</p>
+            </div>
+            
+            <div class="glass-effect p-6 rounded-xl text-center border-l-4 border-amber-500 hover:shadow-lg transition-all">
+                <div class="text-4xl mb-3">🏇</div>
+                <h3 class="text-lg font-semibold text-gray-800 mb-2">Jockeys</h3>
+                <div class="text-3xl font-bold text-gray-800 mb-2">5</div>
+                <p class="text-sm text-gray-600">Professionnels</p>
+            </div>
+        </div>
+
+        <!-- Feature Showcase -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+            
+            <!-- Interactive Buttons -->
+            <div class="glass-effect p-6 rounded-xl fade-in-on-load" style="opacity: 0;">
+                <h3 class="text-xl font-semibold mb-4 text-gray-800">🔘 Boutons Interactifs</h3>
+                <div class="space-y-3">
+                    <div class="grid grid-cols-2 gap-3">
+                        <button class="btn-primary text-white px-4 py-2 rounded-lg hover:shadow-lg transition-all">
+                            🆕 Nouveau
+                        </button>
+                        <button class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 hover:shadow-lg transition-all">
+                            📊 Rapports
+                        </button>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <button class="border-2 border-gray-400 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-100 transition-all">
+                            ⚙️ Paramètres
+                        </button>
+                        <button class="text-gray-600 px-4 py-2 rounded-lg hover:bg-gray-100 transition-all">
+                            📋 Liste
+                        </button>
+                    </div>
+                    <button class="w-full bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 hover:shadow-lg transition-all">
+                        ⚠️ Action Critique
+                    </button>
+                </div>
+            </div>
+
+            <!-- System Status -->
+            <div class="glass-effect p-6 rounded-xl fade-in-on-load" style="opacity: 0;">
+                <h3 class="text-xl font-semibold mb-4 text-gray-800">⚡ État du Système</h3>
+                <div class="space-y-3">
+                    <div class="flex justify-between items-center p-3 bg-white bg-opacity-50 rounded-lg">
+                        <span class="text-sm font-medium">Thème actuel</span>
+                        <span class="text-sm text-gray-600 capitalize" id="current-theme">turf-green</span>
+                    </div>
+                    <div class="flex justify-between items-center p-3 bg-white bg-opacity-50 rounded-lg">
+                        <span class="text-sm font-medium">Animations</span>
+                        <span class="text-sm text-green-600" id="animations-status">Activées</span>
+                    </div>
+                    <div class="flex justify-between items-center p-3 bg-white bg-opacity-50 rounded-lg">
+                        <span class="text-sm font-medium">Ratings System</span>
+                        <span class="text-sm text-green-600">✅ Opérationnel</span>
+                    </div>
+                    <div class="flex justify-between items-center p-3 bg-white bg-opacity-50 rounded-lg">
+                        <span class="text-sm font-medium">API Supabase</span>
+                        <span class="text-sm text-green-600">✅ 195ms</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Feature List -->
+        <div class="glass-effect p-6 rounded-xl mb-8 fade-in-on-load" style="opacity: 0;">
+            <h3 class="text-xl font-semibold mb-4 text-gray-800">🎨 Fonctionnalités UX Implémentées</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div class="flex items-center p-3 bg-white bg-opacity-50 rounded-lg">
+                    <span class="text-green-500 mr-3">✅</span>
+                    <span class="text-sm">6 Thèmes de couleurs</span>
+                </div>
+                <div class="flex items-center p-3 bg-white bg-opacity-50 rounded-lg">
+                    <span class="text-green-500 mr-3">✅</span>
+                    <span class="text-sm">Animations fluides</span>
+                </div>
+                <div class="flex items-center p-3 bg-white bg-opacity-50 rounded-lg">
+                    <span class="text-green-500 mr-3">✅</span>
+                    <span class="text-sm">Mode sombre/clair</span>
+                </div>
+                <div class="flex items-center p-3 bg-white bg-opacity-50 rounded-lg">
+                    <span class="text-green-500 mr-3">✅</span>
+                    <span class="text-sm">Glassmorphism</span>
+                </div>
+                <div class="flex items-center p-3 bg-white bg-opacity-50 rounded-lg">
+                    <span class="text-green-500 mr-3">✅</span>
+                    <span class="text-sm">Accessibilité</span>
+                </div>
+                <div class="flex items-center p-3 bg-white bg-opacity-50 rounded-lg">
+                    <span class="text-green-500 mr-3">✅</span>
+                    <span class="text-sm">Persistance localStorage</span>
+                </div>
+                <div class="flex items-center p-3 bg-white bg-opacity-50 rounded-lg">
+                    <span class="text-green-500 mr-3">✅</span>
+                    <span class="text-sm">Composants React</span>
+                </div>
+                <div class="flex items-center p-3 bg-white bg-opacity-50 rounded-lg">
+                    <span class="text-green-500 mr-3">✅</span>
+                    <span class="text-sm">TypeScript complet</span>
+                </div>
+                <div class="flex items-center p-3 bg-white bg-opacity-50 rounded-lg">
+                    <span class="text-green-500 mr-3">✅</span>
+                    <span class="text-sm">Performance optimisée</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="glass-effect p-4 rounded-xl text-center fade-in-on-load" style="opacity: 0;">
+            <div class="flex flex-col sm:flex-row justify-between items-center text-sm text-gray-600">
+                <div class="flex items-center space-x-4 mb-2 sm:mb-0">
+                    <span class="flex items-center">
+                        <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse mr-2"></span>
+                        Système opérationnel
+                    </span>
+                    <span>•</span>
+                    <span>UX System v2.0.0</span>
+                    <span>•</span>
+                    <span>Tunisia Jockey Club</span>
+                </div>
+                <div class="text-center sm:text-right">
+                    <span>Démonstration interactive</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>

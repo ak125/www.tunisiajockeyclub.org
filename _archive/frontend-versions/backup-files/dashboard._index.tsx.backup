@@ -1,0 +1,368 @@
+import { json, type LoaderFunctionArgs } from "@remix-run/node";
+import { useLoaderData } from '@remix-run/react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from 'recharts';
+import { Calendar, Trophy, Users, Activity, TrendingUp, Zap } from 'lucide-react';
+import { 
+  getDashboardStats, 
+  getMonthlyRaceData, 
+  getHorsePerformance, 
+  getRaceTypeDistribution, 
+  getRecentRaces 
+} from '~/services/dashboard.server';
+
+// Mock data pour fallback
+const generateMockData = () => {
+  const coursesData = [
+    { mois: 'Jan', courses: 12, participants: 156 },
+    { mois: 'Fév', courses: 15, participants: 198 },
+    { mois: 'Mar', courses: 18, participants: 234 },
+    { mois: 'Avr', courses: 22, participants: 287 },
+    { mois: 'Mai', courses: 19, participants: 245 },
+    { mois: 'Jun', courses: 25, participants: 312 }
+  ];
+
+  const performanceData = [
+    { nom: 'Thunder Storm', victoires: 12, courses: 18 },
+    { nom: 'Desert Wind', victoires: 8, courses: 15 },
+    { nom: 'Golden Arrow', victoires: 10, courses: 16 },
+    { nom: 'Lightning Bolt', victoires: 6, courses: 12 },
+    { nom: 'Arabian Dream', victoires: 9, courses: 14 }
+  ];
+
+  const categoriesData = [
+    { name: 'Galop', value: 45, color: '#0088FE' },
+    { name: 'Trot', value: 30, color: '#00C49F' },
+    { name: 'Obstacles', value: 25, color: '#FFBB28' }
+  ];
+
+  return { coursesData, performanceData, categoriesData };
+};
+
+export const loader = async ({ request }: LoaderFunctionArgs) => {
+  try {
+    // Récupérer les vraies données depuis l'API backend Supabase
+    // Toujours utiliser localhost:3000 pour l'API backend
+    const baseUrl = 'http://localhost:3000';
+    const apiUrl = `${baseUrl}/api/dashboard/data`;
+    
+    const res = await fetch(apiUrl);
+    if (!res.ok) {
+      throw new Error(`API Error: ${res.status}`);
+    }
+    
+    const apiData = await res.json();
+    console.log('📊 Dashboard - Données API récupérées:', { 
+      source: apiData.meta?.source,
+      performance: apiData.meta?.performance
+    });
+
+    // Utiliser les vraies données de l'API
+    const stats = {
+      totalCourses: apiData.overview?.totalRaces || 0,
+      totalChevaux: apiData.overview?.totalHorses || 0,
+      totalJockeys: apiData.overview?.totalJockeys || 0,
+      totalUtilisateurs: apiData.overview?.totalUsers || 0,
+      coursesThisMonth: apiData.upcomingRaces?.length || 0
+    };
+
+    // Utiliser les données de performance de l'API ou générer des données par défaut
+    const coursesData = apiData.performanceChart || [
+      { mois: 'Jan', courses: 12, participants: 156 },
+      { mois: 'Fév', courses: 15, participants: 198 },
+      { mois: 'Mar', courses: 18, participants: 234 },
+      { mois: 'Avr', courses: 22, participants: 287 },
+      { mois: 'Mai', courses: 19, participants: 245 },
+      { mois: 'Jun', courses: 25, participants: 312 }
+    ];
+
+    // Mapper les chevaux vers les données de performance
+    const performanceData = (apiData.recentHorses || []).slice(0, 5).map((horse: any, index: number) => ({
+      nom: horse.name || `Cheval ${index + 1}`,
+      victoires: Math.floor(Math.random() * 15) + 3, // Données simulées
+      courses: Math.floor(Math.random() * 20) + 10
+    }));
+
+    // Utiliser les données de distribution de l'API
+    const categoriesData = apiData.distributionData || [
+      { name: 'Pur-sang', value: 35, fill: '#8884d8' },
+      { name: 'Anglo-arabe', value: 28, fill: '#82ca9d' },
+      { name: 'Arabe', value: 22, fill: '#ffc658' },
+      { name: 'Autres', value: 15, fill: '#ff7c7c' }
+    ];
+
+    // Formatage des courses récentes
+    const recentRaces = (apiData.upcomingRaces || []).map((race: any) => ({
+      id: race.id,
+      name: race.name,
+      date: new Date(race.race_date).toLocaleDateString('fr-FR'),
+      participants: race.participants || 8,
+      prize: race.prize_money || '5000 TND'
+    }));
+
+    // Données de rating du dashboard
+    const ratingData = apiData.ratingData || {
+      statistics: {
+        averageRating: 75,
+        topRated: [],
+        totalHorsesRated: 0,
+        ratingDistribution: {}
+      },
+      topHorses: [],
+      averageRating: 75,
+      totalRatedHorses: 0
+    };
+    
+    return json({
+      stats,
+      coursesData,
+      performanceData,
+      categoriesData,
+      recentRaces,
+      ratingData,
+      timestamp: new Date().toISOString(),
+      source: apiData.meta?.source || 'api'
+    });
+  } catch (error) {
+    console.error('Erreur lors du chargement du dashboard:', error);
+    
+    // Fallback vers les données mock en cas d'erreur
+    const mockData = generateMockData();
+    const fallbackStats = {
+      totalCourses: 124,
+      totalChevaux: 89,
+      totalJockeys: 32,
+      coursesThisMonth: 25
+    };
+    
+    return json({
+      stats: fallbackStats,
+      ...mockData,
+      recentRaces: [],
+      ratingData: {
+        statistics: {
+          averageRating: 75,
+          topRated: [
+            { id: '1', name: 'OUARABI AL WALJD', rating: 92, victories: 10 },
+            { id: '2', name: 'OUALID AL KARAWI', rating: 88, victories: 16 },
+            { id: '3', name: 'OUARDI EL ARAB', rating: 85, victories: 9 }
+          ],
+          totalHorsesRated: 45,
+          ratingDistribution: {
+            '90+': 3,
+            '80-89': 12,
+            '70-79': 20,
+            '60-69': 10
+          }
+        }
+      },
+      timestamp: new Date().toISOString(),
+      error: 'Données de démonstration utilisées'
+    });
+  }
+};
+
+export default function DashboardIndex() {
+  const { stats, coursesData, performanceData, categoriesData, ratingData } = useLoaderData<typeof loader>();
+
+  return (
+    <div className="min-h-screen bg-gray-50 p-6">
+      <div className="max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+            🏇 Dashboard Tunisia Jockey Club
+          </h1>
+          <p className="text-gray-600">
+            Vue d'ensemble des performances et statistiques
+          </p>
+        </div>
+
+        {/* KPIs Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-500">Total Courses</p>
+                <p className="text-3xl font-bold text-blue-600">{stats.totalCourses}</p>
+              </div>
+              <Calendar className="w-8 h-8 text-blue-500" />
+            </div>
+          </div>
+
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-500">Chevaux Actifs</p>
+                <p className="text-3xl font-bold text-green-600">{stats.totalChevaux}</p>
+              </div>
+              <Activity className="w-8 h-8 text-green-500" />
+            </div>
+          </div>
+
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-500">Jockeys</p>
+                <p className="text-3xl font-bold text-purple-600">{stats.totalJockeys}</p>
+              </div>
+              <Users className="w-8 h-8 text-purple-500" />
+            </div>
+          </div>
+
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-500">Ce Mois</p>
+                <p className="text-3xl font-bold text-orange-600">{stats.coursesThisMonth}</p>
+              </div>
+              <Trophy className="w-8 h-8 text-orange-500" />
+            </div>
+          </div>
+        </div>
+
+        {/* Graphiques */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+          {/* Évolution des courses */}
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+              Évolution Mensuelle des Courses
+            </h3>
+            <ResponsiveContainer width="100%" height={300}>
+              <LineChart data={coursesData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="mois" />
+                <YAxis />
+                <Tooltip />
+                <Legend />
+                <Line type="monotone" dataKey="courses" stroke="#3B82F6" strokeWidth={2} />
+                <Line type="monotone" dataKey="participants" stroke="#10B981" strokeWidth={2} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+
+          {/* Performance des chevaux */}
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+              Top Performances Chevaux
+            </h3>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={performanceData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="nom" />
+                <YAxis />
+                <Tooltip />
+                <Legend />
+                <Bar dataKey="victoires" fill="#3B82F6" />
+                <Bar dataKey="courses" fill="#10B981" />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* Répartition par catégories */}
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">
+            Répartition des Types de Courses
+          </h3>
+          <ResponsiveContainer width="100%" height={300}>
+            <PieChart>
+              <Pie
+                data={categoriesData}
+                cx="50%"
+                cy="50%"
+                labelLine={false}
+                label={({ name, percent }) => `${name} ${((percent || 0) * 100).toFixed(0)}%`}
+                outerRadius={80}
+                fill="#8884d8"
+                dataKey="value"
+              >
+                {categoriesData.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={entry.color} />
+                ))}
+              </Pie>
+              <Tooltip />
+            </PieChart>
+          </ResponsiveContainer>
+        </div>
+
+        </div>
+
+        {/* Section Rating des Chevaux */}
+        {data.ratingData && (
+          <div className="bg-white rounded-lg shadow-md p-6 mt-8">
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">🏆 Rating des Chevaux</h2>
+            
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Statistiques Rating */}
+              <div className="bg-gray-50 rounded-lg p-4">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                  Statistiques Rating
+                </h3>
+                <div className="space-y-4">
+                  <div>
+                    <p className="text-sm font-medium text-gray-500">Rating Moyen</p>
+                    <p className="text-2xl font-bold text-blue-600">
+                      {data.ratingData.averageRating || data.ratingData.statistics?.averageRating || 75}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-500">Chevaux Évalués</p>
+                    <p className="text-2xl font-bold text-green-600">
+                      {data.ratingData.statistics?.totalHorsesRated || 45}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Top Chevaux */}
+              <div className="bg-gray-50 rounded-lg p-4">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                  Top 5 Chevaux
+                </h3>
+                <div className="space-y-3">
+                  {(data.ratingData.topHorses || data.ratingData.statistics?.topRated || []).slice(0, 5).map((horse: any, index: number) => (
+                    <div key={horse.id || index} className="flex justify-between items-center">
+                      <div>
+                        <p className="font-medium text-gray-900">{horse.name}</p>
+                        <p className="text-sm text-gray-500">Rating: {horse.rating}</p>
+                      </div>
+                      <div className={`px-3 py-1 rounded-full text-sm font-medium ${
+                        horse.rating >= 90 ? 'bg-red-100 text-red-800' :
+                        horse.rating >= 80 ? 'bg-orange-100 text-orange-800' :
+                        horse.rating >= 70 ? 'bg-yellow-100 text-yellow-800' :
+                        'bg-gray-100 text-gray-800'
+                      }`}>
+                        {horse.rating}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Distribution */}
+              <div className="bg-gray-50 rounded-lg p-4">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                  Distribution
+                </h3>
+                <div className="space-y-3">
+                  {Object.entries(data.ratingData.statistics?.ratingDistribution || {}).map(([range, count]) => (
+                    <div key={range} className="flex justify-between items-center">
+                      <span className="text-sm font-medium text-gray-700">{range}</span>
+                      <span className="text-sm text-gray-600">{String(count)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Footer */}
+        <div className="mt-8 text-center text-gray-500 text-sm">
+          <p>Tunisia Jockey Club - Dashboard de Gestion</p>
+          <p>Dernière mise à jour: {new Date().toLocaleString('fr-FR')}</p>
+        </div>
+      </div>
+    </div>
+  );
+}

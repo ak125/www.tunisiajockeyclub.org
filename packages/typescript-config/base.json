@@ -14,6 +14,8 @@
     "moduleResolution": "Node",
     "resolveJsonModule": false,
     "allowJs": false,
-    "lib": ["ES2023"]
+    "lib": ["ES2023"],
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true
     }
 }

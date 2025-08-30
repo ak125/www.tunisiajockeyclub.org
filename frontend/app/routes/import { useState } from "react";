@@ -1,0 +1,652 @@
+import { useState } from "react";
+import { ChevronDown, ChevronUp, Calculator, Trophy, BarChart3, User, Calendar, ChevronRight, X, Scale, FileText } from "lucide-react";
+import { Link } from "react-router-dom";
+
+export default function RatingReglementation() {
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
+    contexte: true,
+    criteres: false,
+    methode: false,
+    comparaison: false,
+    base: false,
+    specificites: false,
+    exemple: false
+  });
+
+  const toggleSection = (section: string) => {
+    setExpandedSections(prev => ({
+      ...prev,
+      [section]: !prev[section]
+    }));
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Header */}
+        <div className="bg-white rounded-lg shadow-lg p-6 mb-8">
+          <div className="flex items-center mb-4">
+            <Scale className="h-8 w-8 text-blue-600 mr-3" />
+            <h1 className="text-3xl font-bold text-gray-900">
+              Méthode Officielle de Calcul du Rating
+            </h1>
+          </div>
+          <p className="text-lg text-gray-600">
+            Système de handicap rating des chevaux de plat en Tunisie
+          </p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
+              Standards Internationaux
+            </span>
+            <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium">
+              Conforme France Galop
+            </span>
+            <span className="px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-sm font-medium">
+              Échelle 20-50 kg
+            </span>
+          </div>
+        </div>
+
+        {/* Rating Section - Plus visible */}
+        <div className="mt-6 px-3">
+          <div className="bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg p-4">
+            <h3 className="text-white font-semibold mb-3 flex items-center">
+              <Calculator className="h-5 w-5 mr-2" />
+              Système Rating TJC
+            </h3>
+            <div className="space-y-2">
+              <Link
+                to="/rating"
+                className="flex items-center justify-between bg-white/20 hover:bg-white/30 text-white rounded px-3 py-2 transition-colors"
+                onClick={() => setIsOpen(false)}
+              >
+                <span className="text-sm font-medium">Calculateur Rating</span>
+                <ChevronRight className="h-4 w-4" />
+              </Link>
+              <Link
+                to="/rating/interface"
+                className="flex items-center justify-between bg-white/20 hover:bg-white/30 text-white rounded px-3 py-2 transition-colors"
+                onClick={() => setIsOpen(false)}
+              >
+                <span className="text-sm font-medium">Interface Ratings</span>
+                <ChevronRight className="h-4 w-4" />
+              </Link>
+              <Link
+                to="/rating/reglementation"
+                className="flex items-center justify-between bg-white/20 hover:bg-white/30 text-white rounded px-3 py-2 transition-colors"
+                onClick={() => setIsOpen(false)}
+              >
+                <span className="text-sm font-medium flex items-center">
+                  <FileText className="h-3 w-3 mr-1" />
+                  Réglementation
+                </span>
+                <ChevronRight className="h-4 w-4" />
+              </Link>
+            </div>
+          </div>
+        </div>
+
+        {/* Section 1: Contexte général */}
+        <div className="bg-white rounded-lg shadow mb-6">
+          <button
+            onClick={() => toggleSection('contexte')}
+            className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
+          >
+            <div className="flex items-center">
+              <Globe className="h-5 w-5 text-blue-600 mr-3" />
+              <h2 className="text-xl font-semibold text-gray-900">
+                Contexte Général et Standards Internationaux
+              </h2>
+            </div>
+            {expandedSections.contexte ? <ChevronUp /> : <ChevronDown />}
+          </button>
+          {expandedSections.contexte && (
+            <div className="px-6 pb-6">
+              <div className="prose max-w-none">
+                <p className="text-gray-700 mb-4">
+                  La Tunisie applique une méthode de handicap rating (valeur officielle des chevaux) conforme aux principes internationaux. 
+                  Historiquement, le code des courses tunisien s'inspire du modèle français : dès 1912, la Tunisie a introduit son propre 
+                  code des courses de plat en accord avec la réglementation française.
+                </p>
+                
+                <div className="bg-blue-50 p-4 rounded-lg mb-4">
+                  <h3 className="font-semibold text-blue-900 mb-2">Échelle de notation</h3>
+                  <ul className="space-y-2 text-gray-700">
+                    <li className="flex items-start">
+                      <span className="text-blue-600 mr-2">•</span>
+                      <span><strong>Tunisie/France :</strong> 20 à 50 kg (champions au-delà de 50)</span>
+                    </li>
+                    <li className="flex items-start">
+                      <span className="text-blue-600 mr-2">•</span>
+                      <span><strong>Royaume-Uni :</strong> 0 à 140 livres (Frankel : 140 = record)</span>
+                    </li>
+                    <li className="flex items-start">
+                      <span className="text-blue-600 mr-2">•</span>
+                      <span><strong>Conversion :</strong> 140 livres ≃ 63,5 kg</span>
+                    </li>
+                  </ul>
+                </div>
+
+                <p className="text-gray-700">
+                  La Tunisie, via la Société des Courses Hippiques de Tunis (membre des instances internationales), 
+                  aligne donc son échelle sur ces standards, avec les adaptations nécessaires à son effectif de chevaux local.
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Section 2: Critères */}
+        <div className="bg-white rounded-lg shadow mb-6">
+          <button
+            onClick={() => toggleSection('criteres')}
+            className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
+          >
+            <div className="flex items-center">
+              <FileText className="h-5 w-5 text-green-600 mr-3" />
+              <h2 className="text-xl font-semibold text-gray-900">
+                Critères Pris en Compte dans le Calcul
+              </h2>
+            </div>
+            {expandedSections.criteres ? <ChevronUp /> : <ChevronDown />}
+          </button>
+          {expandedSections.criteres && (
+            <div className="px-6 pb-6">
+              <div className="space-y-4">
+                {/* Critère 1 */}
+                <div className="border-l-4 border-green-500 pl-4">
+                  <h3 className="font-semibold text-gray-900 mb-2">1. Place et écart à l'arrivée</h3>
+                  <p className="text-gray-700 mb-2">
+                    La distance (en longueurs) séparant le cheval des autres à l'arrivée est un indicateur clé.
+                  </p>
+                  <div className="bg-gray-50 p-3 rounded">
+                    <p className="text-sm font-medium text-gray-900 mb-1">Équivalences standard :</p>
+                    <ul className="text-sm text-gray-600 space-y-1">
+                      <li>• Sur 1600-2000m : 1 longueur = ~1 kg de rating</li>
+                      <li>• Sur 1200m : 1 longueur = ~2 kg de rating</li>
+                      <li>• Sur 2400m+ : 1 longueur = ~0,5-0,67 kg de rating</li>
+                    </ul>
+                  </div>
+                </div>
+
+                {/* Critère 2 */}
+                <div className="border-l-4 border-green-500 pl-4">
+                  <h3 className="font-semibold text-gray-900 mb-2">2. Poids porté en course</h3>
+                  <p className="text-gray-700">
+                    Un cheval qui bat un adversaire tout en portant plus de poids a réalisé une performance supérieure. 
+                    Le rating en tient compte proportionnellement.
+                  </p>
+                </div>
+
+                {/* Critère 3 */}
+                <div className="border-l-4 border-green-500 pl-4">
+                  <h3 className="font-semibold text-gray-900 mb-2">3. Niveau de la course (classe)</h3>
+                  <p className="text-gray-700">
+                    La qualité intrinsèque de l'épreuve est considérée. Une place d'honneur dans une course de haut niveau 
+                    peut valoir mieux qu'une victoire facile dans une course modeste.
+                  </p>
+                </div>
+
+                {/* Critère 4 */}
+                <div className="border-l-4 border-green-500 pl-4">
+                  <h3 className="font-semibold text-gray-900 mb-2">4. Conditions de course et parcours</h3>
+                  <ul className="text-gray-700 space-y-1">
+                    <li>• État du terrain (bon, souple, lourd)</li>
+                    <li>• Déroulement du parcours (gênes, parcours favorable)</li>
+                    <li>• Rythme de l'épreuve (lent ou sélectif)</li>
+                    <li>• Performance du jockey</li>
+                  </ul>
+                </div>
+
+                {/* Critère 5 */}
+                <div className="border-l-4 border-green-500 pl-4">
+                  <h3 className="font-semibold text-gray-900 mb-2">5. Historique et performances antérieures</h3>
+                  <p className="text-gray-700">
+                    Les performances passées du cheval sont intégrées pour lisser les contre-performances accidentelles 
+                    ou valider une franche amélioration.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Section 3: Méthode */}
+        <div className="bg-white rounded-lg shadow mb-6">
+          <button
+            onClick={() => toggleSection('methode')}
+            className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
+          >
+            <div className="flex items-center">
+              <Calculator className="h-5 w-5 text-purple-600 mr-3" />
+              <h2 className="text-xl font-semibold text-gray-900">
+                Méthode d'Établissement et d'Ajustement
+              </h2>
+            </div>
+            {expandedSections.methode ? <ChevronUp /> : <ChevronDown />}
+          </button>
+          {expandedSections.methode && (
+            <div className="px-6 pb-6">
+              <div className="space-y-6">
+                {/* Attribution initiale */}
+                <div>
+                  <h3 className="font-semibold text-gray-900 mb-3 flex items-center">
+                    <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded text-sm mr-2">1</span>
+                    Attribution initiale
+                  </h3>
+                  <div className="bg-purple-50 p-4 rounded-lg">
+                    <p className="text-gray-700 mb-2">
+                      Un cheval débute sa carrière sans rating. Il reçoit sa première valeur après :
+                    </p>
+                    <ul className="space-y-1 text-gray-700">
+                      <li className="flex items-center">
+                        <Trophy className="h-4 w-4 text-purple-600 mr-2" />
+                        <span><strong>3 courses publiques minimum</strong> (standard France Galop)</span>
+                      </li>
+                      <li className="flex items-center">
+                        <Trophy className="h-4 w-4 text-purple-600 mr-2" />
+                        <span>Ou <strong>après une première victoire</strong></span>
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+
+                {/* Calcul de la valeur */}
+                <div>
+                  <h3 className="font-semibold text-gray-900 mb-3 flex items-center">
+                    <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded text-sm mr-2">2</span>
+                    Calcul de la valeur lors d'une course
+                  </h3>
+                  <p className="text-gray-700 mb-3">
+                    Les handicapeurs analysent le résultat et attribuent une valeur de performance à chaque cheval :
+                  </p>
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <ol className="space-y-2 text-gray-700">
+                      <li>1. Identification d'un <strong>cheval repère</strong> (valeur connue fiable)</li>
+                      <li>2. Calcul des valeurs relatives par comparaison</li>
+                      <li>3. Application des écarts de poids et distances</li>
+                      <li>4. Attribution d'une valeur de performance du jour</li>
+                    </ol>
+                  </div>
+                </div>
+
+                {/* Commission et validation */}
+                <div>
+                  <h3 className="font-semibold text-gray-900 mb-3 flex items-center">
+                    <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded text-sm mr-2">3</span>
+                    Commission et validation
+                  </h3>
+                  <div className="bg-blue-50 p-4 rounded-lg">
+                    <p className="text-gray-700 mb-2">
+                      <strong>Commission de 2-3 handicapeurs experts</strong> qui :
+                    </p>
+                    <ul className="space-y-1 text-gray-700">
+                      <li>• Confrontent leurs analyses</li>
+                      <li>• Neutralisent la subjectivité</li>
+                      <li>• Publient sous 48h la valeur officielle</li>
+                    </ul>
+                  </div>
+                </div>
+
+                {/* Ajustements */}
+                <div>
+                  <h3 className="font-semibold text-gray-900 mb-3 flex items-center">
+                    <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded text-sm mr-2">4</span>
+                    Ajustements après chaque performance
+                  </h3>
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div className="bg-green-50 p-4 rounded-lg">
+                      <h4 className="font-semibold text-green-900 mb-2">Hausse du rating</h4>
+                      <ul className="text-sm text-gray-700 space-y-1">
+                        <li>• Victoire facile avec marge</li>
+                        <li>• Performance au-dessus de la valeur</li>
+                        <li>• Progression confirmée</li>
+                      </ul>
+                    </div>
+                    <div className="bg-red-50 p-4 rounded-lg">
+                      <h4 className="font-semibold text-red-900 mb-2">Baisse du rating</h4>
+                      <ul className="text-sm text-gray-700 space-y-1">
+                        <li>• Contre-performance majeure</li>
+                        <li>• Battu à distance</li>
+                        <li>• Déclin confirmé</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Section 4: Comparaison */}
+        <div className="bg-white rounded-lg shadow mb-6">
+          <button
+            onClick={() => toggleSection('comparaison')}
+            className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
+          >
+            <div className="flex items-center">
+              <Scale className="h-5 w-5 text-orange-600 mr-3" />
+              <h2 className="text-xl font-semibold text-gray-900">
+                Comparaison des Chevaux par le Handicap
+              </h2>
+            </div>
+            {expandedSections.comparaison ? <ChevronUp /> : <ChevronDown />}
+          </button>
+          {expandedSections.comparaison && (
+            <div className="px-6 pb-6">
+              <div className="space-y-4">
+                <p className="text-gray-700">
+                  Le principe du rating est de comparer le niveau de deux chevaux à travers un chiffre et d'équilibrer 
+                  leurs chances dans les courses à handicap.
+                </p>
+
+                <div className="bg-orange-50 p-4 rounded-lg">
+                  <h3 className="font-semibold text-orange-900 mb-2">Principe d'équilibrage</h3>
+                  <p className="text-gray-700 mb-2">
+                    Si deux chevaux ont une différence de 4 kg en valeur :
+                  </p>
+                  <ul className="space-y-1 text-gray-700">
+                    <li>• Le plus fort portera <strong>4 kg de plus</strong> en handicap</li>
+                    <li>• En théorie, ils devraient finir <strong>à égalité</strong></li>
+                    <li>• Sans handicap, l'écart serait de <strong>~4 longueurs</strong> sur 2000m</li>
+                  </ul>
+                </div>
+
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <h3 className="font-semibold text-gray-900 mb-2">Utilisation pratique</h3>
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div>
+                      <h4 className="font-medium text-gray-800 mb-1">Dans les handicaps</h4>
+                      <p className="text-sm text-gray-600">
+                        Égalisation des chances par attribution de poids différenciés
+                      </p>
+                    </div>
+                    <div>
+                      <h4 className="font-medium text-gray-800 mb-1">Hors handicaps</h4>
+                      <p className="text-sm text-gray-600">
+                        Évaluation de la qualité des épreuves et comparaison inter-générations
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Section 5: Base initiale */}
+        <div className="bg-white rounded-lg shadow mb-6">
+          <button
+            onClick={() => toggleSection('base')}
+            className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
+          >
+            <div className="flex items-center">
+              <Info className="h-5 w-5 text-indigo-600 mr-3" />
+              <h2 className="text-xl font-semibold text-gray-900">
+                Base de Rating Initiale
+              </h2>
+            </div>
+            {expandedSections.base ? <ChevronUp /> : <ChevronDown />}
+          </button>
+          {expandedSections.base && (
+            <div className="px-6 pb-6">
+              <div className="space-y-4">
+                <p className="text-gray-700">
+                  Pour les chevaux atteignant le seuil requis (3 courses ou première victoire), les handicapeurs 
+                  attribuent une valeur initiale selon leur niveau observé.
+                </p>
+
+                <div className="bg-indigo-50 p-4 rounded-lg">
+                  <h3 className="font-semibold text-indigo-900 mb-3">Valeurs conventionnelles (barème France Galop)</h3>
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center py-2 border-b border-indigo-200">
+                      <span className="text-gray-700">Mâle 3 ans (courses modestes, non placé)</span>
+                      <span className="font-semibold text-indigo-900">~30 kg</span>
+                    </div>
+                    <div className="flex justify-between items-center py-2 border-b border-indigo-200">
+                      <span className="text-gray-700">Pouliche 3 ans (même cas)</span>
+                      <span className="font-semibold text-indigo-900">~28,5 kg</span>
+                    </div>
+                    <div className="flex justify-between items-center py-2">
+                      <span className="text-gray-700">Courses C1 bon niveau (sans succès)</span>
+                      <span className="font-semibold text-indigo-900">~34 kg</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-yellow-50 p-4 rounded-lg">
+                  <h3 className="font-semibold text-yellow-900 mb-2">Chevaux importés</h3>
+                  <p className="text-gray-700">
+                    Un cheval venant de l'étranger conserve généralement sa valeur d'origine, 
+                    ajustée au contexte local si nécessaire.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Section 6: Spécificités tunisiennes */}
+        <div className="bg-white rounded-lg shadow mb-6">
+          <button
+            onClick={() => toggleSection('specificites')}
+            className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
+          >
+            <div className="flex items-center">
+              <Globe className="h-5 w-5 text-red-600 mr-3" />
+              <h2 className="text-xl font-semibold text-gray-900">
+                Spécificités et Adaptations au Contexte Tunisien
+              </h2>
+            </div>
+            {expandedSections.specificites ? <ChevronUp /> : <ChevronDown />}
+          </button>
+          {expandedSections.specificites && (
+            <div className="px-6 pb-6">
+              <div className="space-y-4">
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div className="bg-red-50 p-4 rounded-lg">
+                    <h3 className="font-semibold text-red-900 mb-2">Échelle de valeurs</h3>
+                    <p className="text-gray-700 text-sm">
+                      Amplitude moins étendue qu'en Europe. Les meilleurs galopeurs tunisiens : 40+ kg. 
+                      Rarement les très hautes valeurs européennes.
+                    </p>
+                  </div>
+                  <div className="bg-blue-50 p-4 rounded-lg">
+                    <h3 className="font-semibold text-blue-900 mb-2">Catégorisation</h3>
+                    <p className="text-gray-700 text-sm">
+                      Classification selon gains et performances. Montée/descente de catégorie 
+                      en fonction de l'évolution du rating.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="bg-green-50 p-4 rounded-lg">
+                  <h3 className="font-semibold text-green-900 mb-2">Races locales vs internationales</h3>
+                  <div className="space-y-2">
+                    <div className="flex items-start">
+                      <span className="text-green-600 mr-2">•</span>
+                      <div>
+                        <strong>Pur-sang Anglais :</strong> Échelle standard internationale
+                      </div>
+                    </div>
+                    <div className="flex items-start">
+                      <span className="text-green-600 mr-2">•</span>
+                      <div>
+                        <strong>Pur-sang Arabes :</strong> Ratings séparés, échelle adaptée (généralement plus basse)
+                      </div>
+                    </div>
+                    <div className="flex items-start">
+                      <span className="text-green-600 mr-2">•</span>
+                      <div>
+                        <strong>Harmonisation :</strong> Via IFAHR pour les échanges internationaux
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-purple-50 p-4 rounded-lg">
+                  <h3 className="font-semibold text-purple-900 mb-2">Adaptations réglementaires</h3>
+                  <p className="text-gray-700">
+                    Code des courses tunisien aligné sur le modèle français depuis 1912, avec règles locales sur :
+                  </p>
+                  <ul className="mt-2 space-y-1 text-gray-700 text-sm">
+                    <li>• Fréquence de révision des valeurs</li>
+                    <li>• Limitations de hausse/baisse par course</li>
+                    <li>• Cas particuliers (longue absence, réclamer)</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Section 7: Exemple pratique */}
+        <div className="bg-white rounded-lg shadow mb-6">
+          <button
+            onClick={() => toggleSection('exemple')}
+            className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
+          >
+            <div className="flex items-center">
+              <Calculator className="h-5 w-5 text-teal-600 mr-3" />
+              <h2 className="text-xl font-semibold text-gray-900">
+                Exemple Pratique de Calcul
+              </h2>
+            </div>
+            {expandedSections.exemple ? <ChevronUp /> : <ChevronDown />}
+          </button>
+          {expandedSections.exemple && (
+            <div className="px-6 pb-6">
+              <div className="space-y-4">
+                <div className="bg-teal-50 p-4 rounded-lg">
+                  <h3 className="font-semibold text-teal-900 mb-3">Scénario : Course sur 1600m</h3>
+                  
+                  <div className="space-y-4">
+                    {/* Avant course */}
+                    <div>
+                      <h4 className="font-medium text-gray-900 mb-2">📊 Situation avant course</h4>
+                      <div className="bg-white p-3 rounded space-y-1">
+                        <div className="flex justify-between">
+                          <span>Cheval A (valeur officielle)</span>
+                          <span className="font-semibold">30 kg</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Cheval B (valeur officielle)</span>
+                          <span className="font-semibold">28 kg</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Cheval C (valeur officielle)</span>
+                          <span className="font-semibold">30 kg</span>
+                        </div>
+                        <div className="mt-2 pt-2 border-t text-sm text-gray-600">
+                          Pronostic : A devrait battre B de ~2 longueurs (2 kg d'écart)
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Résultat */}
+                    <div>
+                      <h4 className="font-medium text-gray-900 mb-2">🏁 Résultat de la course</h4>
+                      <div className="bg-white p-3 rounded">
+                        <ol className="space-y-1">
+                          <li>1er - <strong>Cheval A</strong></li>
+                          <li>2e - <strong>Cheval B</strong> (à 1 longueur)</li>
+                          <li>3e - <strong>Cheval C</strong> (à 5 longueurs)</li>
+                        </ol>
+                        <div className="mt-2 pt-2 border-t text-sm text-gray-600">
+                          B a mieux couru que prévu (1 longueur au lieu de 2)
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Analyse */}
+                    <div>
+                      <h4 className="font-medium text-gray-900 mb-2">🔍 Analyse du handicapeur</h4>
+                      <div className="bg-white p-3 rounded space-y-2 text-sm">
+                        <div className="flex items-start">
+                          <span className="text-green-600 mr-2">↗</span>
+                          <div>
+                            <strong>Cheval B :</strong> Surperformance → Hausse probable à 29 kg
+                          </div>
+                        </div>
+                        <div className="flex items-start">
+                          <span className="text-blue-600 mr-2">→</span>
+                          <div>
+                            <strong>Cheval A :</strong> Confirmation → Maintien à 30 ou légère hausse à 30,5 kg
+                          </div>
+                        </div>
+                        <div className="flex items-start">
+                          <span className="text-red-600 mr-2">↘</span>
+                          <div>
+                            <strong>Cheval C :</strong> Contre-performance → Baisse à 27-28 kg
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Nouvelles valeurs */}
+                    <div>
+                      <h4 className="font-medium text-gray-900 mb-2">📈 Nouvelles valeurs officielles</h4>
+                      <div className="bg-white p-3 rounded">
+                        <div className="space-y-2">
+                          <div className="flex justify-between items-center">
+                            <span>Cheval A</span>
+                            <div className="flex items-center">
+                              <span className="text-gray-500 mr-2">30 →</span>
+                              <span className="font-semibold text-green-600">30,5 kg</span>
+                            </div>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span>Cheval B</span>
+                            <div className="flex items-center">
+                              <span className="text-gray-500 mr-2">28 →</span>
+                              <span className="font-semibold text-green-600">29 kg</span>
+                            </div>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span>Cheval C</span>
+                            <div className="flex items-center">
+                              <span className="text-gray-500 mr-2">30 →</span>
+                              <span className="font-semibold text-red-600">28 kg</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Impact */}
+                    <div className="bg-yellow-50 p-3 rounded">
+                      <h4 className="font-medium text-yellow-900 mb-1">💡 Impact pour la prochaine course</h4>
+                      <p className="text-sm text-gray-700">
+                        Dans un handicap, B ne recevra plus que 1,5 kg de A (au lieu de 2 kg), 
+                        reflétant leur niveau réel plus proche que prévu initialement.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Footer avec sources */}
+        <div className="bg-gray-100 rounded-lg p-6 mt-8">
+          <h3 className="font-semibold text-gray-900 mb-3">📚 Sources et Références</h3>
+          <div className="space-y-2 text-sm text-gray-600">
+            <p>
+              • <strong>France Galop :</strong> Guide des Handicaps - Méthodologie adoptée par la Tunisie
+            </p>
+            <p>
+              • <strong>British Horseracing Authority (BHA) :</strong> Système de référence international
+            </p>
+            <p>
+              • <strong>Code des courses tunisien :</strong> Aligné sur le modèle français depuis 1912
+            </p>
+            <p>
+              • <strong>Société des Courses Hippiques de Tunis :</strong> Membre des instances internationales (IFAHR)
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

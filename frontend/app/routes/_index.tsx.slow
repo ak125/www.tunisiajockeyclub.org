@@ -1,0 +1,254 @@
+import { json, type LoaderFunctionArgs } from "@remix-run/node";
+import { useLoaderData, Link } from '@remix-run/react';
+import { motion } from 'framer-motion';
+import { Trophy, Users, Clock, Star, BarChart3 } from 'lucide-react';
+
+export const loader = async ({ request }: LoaderFunctionArgs) => {
+    // Pour l'instant, on mock les données utilisateur
+    const user = null; // TODO: Implémenter la gestion des sessions
+    
+    // Données de statistiques optimisées
+    const stats = {
+        totalRaces: 124,
+        activeHorses: 89,
+        registeredJockeys: 32,
+        upcomingEvents: 8
+    };
+    
+    return json({
+        user,
+        stats,
+        timestamp: new Date().toISOString(),
+    });
+};
+
+function HeroSection() {
+  return (
+    <section 
+      className="relative bg-gradient-to-r from-blue-600 to-purple-700 text-white py-16 overflow-hidden"
+      aria-labelledby="hero-title"
+    >
+      <div className="absolute inset-0 bg-black/20"></div>
+      
+      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <motion.div
+          initial={{ y: 50, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ duration: 0.8 }}
+          className="text-center"
+        >
+          <h1 
+            id="hero-title"
+            className="text-4xl sm:text-5xl lg:text-6xl font-bold mb-6"
+          >
+            🏇 Tunisia Jockey Club
+          </h1>
+          <p className="text-lg sm:text-xl max-w-3xl mx-auto mb-8 opacity-90">
+            Centre d'excellence hippique - Système IFHA de rating international
+          </p>
+          
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+              <Link 
+                to="/ifha"
+                className="inline-flex items-center px-8 py-4 bg-white text-blue-600 rounded-lg font-semibold hover:bg-gray-100 transition-colors shadow-lg"
+                aria-label="Accéder au système de rating IFHA"
+              >
+                <Trophy className="w-5 h-5 mr-2" />
+                Rating IFHA
+              </Link>
+            </motion.div>
+            
+            <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+              <Link 
+                to="/dashboard"
+                className="inline-flex items-center px-8 py-4 border-2 border-white text-white rounded-lg font-semibold hover:bg-white hover:text-blue-600 transition-colors"
+                aria-label="Accéder au tableau de bord"
+              >
+                <BarChart3 className="w-5 h-5 mr-2" />
+                Dashboard
+              </Link>
+            </motion.div>
+          </div>
+        </motion.div>
+      </div>
+    </section>
+  );
+}
+
+function QuickStatsSection({ stats }: { stats: any }) {
+  const statItems = [
+    {
+      icon: Trophy,
+      value: stats.totalRaces,
+      label: 'Courses Total',
+      color: 'text-yellow-600',
+      bgColor: 'bg-yellow-50'
+    },
+    {
+      icon: Users,
+      value: stats.activeHorses,
+      label: 'Chevaux Actifs',
+      color: 'text-blue-600',
+      bgColor: 'bg-blue-50'
+    },
+    {
+      icon: Users,
+      value: stats.registeredJockeys,
+      label: 'Jockeys',
+      color: 'text-green-600',
+      bgColor: 'bg-green-50'
+    },
+    {
+      icon: Clock,
+      value: stats.upcomingEvents,
+      label: 'Événements',
+      color: 'text-purple-600',
+      bgColor: 'bg-purple-50'
+    }
+  ];
+
+  return (
+    <section 
+      className="py-12 bg-gray-50"
+      aria-labelledby="stats-title"
+    >
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <h2 id="stats-title" className="sr-only">Statistiques rapides</h2>
+        
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+          {statItems.map((stat, index) => (
+            <motion.div
+              key={stat.label}
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ duration: 0.4, delay: index * 0.1 }}
+              className={`${stat.bgColor} rounded-lg p-6 text-center shadow-sm hover:shadow-md transition-shadow`}
+            >
+              <stat.icon className={`w-8 h-8 ${stat.color} mx-auto mb-3`} />
+              <p className="text-2xl font-bold text-gray-900">
+                {stat.value.toLocaleString()}
+              </p>
+              <p className="text-sm text-gray-600">{stat.label}</p>
+            </motion.div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+export default function Index() {
+  const { user, stats } = useLoaderData<typeof loader>();
+  
+  return (
+    <main role="main" aria-label="Page d'accueil Tunisia Jockey Club">
+      {/* Hero Section - Chargement immédiat */}
+      <HeroSection />
+      
+      {/* Quick Stats - Chargement immédiat */}
+      <QuickStatsSection stats={stats} />
+      
+      {/* Section Auth/Navigation */}
+      <div className="max-w-4xl mx-auto p-6">        
+        {user ? (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-8">
+            <p className="text-blue-800 mb-4">
+              👋 Bienvenue !
+            </p>
+            <div className="flex gap-4 justify-center">
+              <Link 
+                to="/dashboard" 
+                className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg"
+                aria-label="Accéder au tableau de bord principal"
+              >
+                📊 Tableau de bord
+              </Link>
+              <form action="/auth/logout" method="POST" className="inline">
+                <button 
+                  type="submit" 
+                  className="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-lg"
+                  aria-label="Se déconnecter de la session"
+                >
+                  🚪 Se déconnecter
+                </button>
+              </form>
+            </div>
+          </div>
+        ) : (
+          <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 mb-8">
+            <p className="text-gray-700 mb-4">
+              Connectez-vous pour accéder à votre espace personnel
+            </p>
+            <div className="flex gap-4 justify-center">
+              <Link 
+                to="/login" 
+                className="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-lg"
+                aria-label="Se connecter à votre compte"
+              >
+                🔐 Se connecter
+              </Link>
+              <Link 
+                to="/register" 
+                className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg"
+                aria-label="Créer un nouveau compte"
+              >
+                ✨ Créer un compte
+              </Link>
+            </div>
+          </div>
+        )}
+      </div>
+      
+      {/* Sections avec lazy loading */}
+      <div className="max-w-4xl mx-auto px-6 pb-12">
+        <div className="grid md:grid-cols-3 gap-6">
+          <motion.div 
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.2 }}
+            className="bg-white shadow rounded-lg p-6"
+          >
+            <h3 className="font-semibold text-lg mb-2 flex items-center gap-2">
+              <Trophy className="w-5 h-5 text-yellow-600" />
+              Courses
+            </h3>
+            <p className="text-gray-600">
+              Consultez les programmes et résultats des courses
+            </p>
+          </motion.div>
+          
+          <motion.div 
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.3 }}
+            className="bg-white shadow rounded-lg p-6"
+          >
+            <h3 className="font-semibold text-lg mb-2 flex items-center gap-2">
+              <Star className="w-5 h-5 text-blue-600" />
+              Chevaux
+            </h3>
+            <p className="text-gray-600">
+              Base de données complète des chevaux de course
+            </p>
+          </motion.div>
+          
+          <motion.div 
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.4 }}
+            className="bg-white shadow rounded-lg p-6"
+          >
+            <h3 className="font-semibold text-lg mb-2 flex items-center gap-2">
+              <Users className="w-5 h-5 text-green-600" />
+              Jockeys
+            </h3>
+            <p className="text-gray-600">
+              Profils et statistiques des jockeys
+            </p>
+          </motion.div>
+        </div>
+      </div>
+    </main>
+  );
+}  

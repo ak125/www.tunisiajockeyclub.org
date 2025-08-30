@@ -1,0 +1,46 @@
+{
+  "name": "@tunisia-jockey-club/frontend-tests",
+  "version": "1.0.0",
+  "description": "Suite de tests pour l'interface TJC",
+  "scripts": {
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "test:coverage": "vitest --coverage",
+    "test:watch": "vitest --watch",
+    "test:run": "vitest run",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:mobile": "vitest --config vitest.mobile.config.ts",
+    "test:accessibility": "vitest --config vitest.a11y.config.ts",
+    "test:performance": "vitest --config vitest.perf.config.ts",
+    "lint:test": "eslint app/tests/**/*.{ts,tsx}",
+    "type-check:test": "tsc --noEmit --project tsconfig.test.json"
+  },
+  "devDependencies": {
+    "@testing-library/dom": "^9.3.4",
+    "@testing-library/jest-dom": "^6.1.5",
+    "@testing-library/react": "^14.1.2",
+    "@testing-library/user-event": "^14.5.1",
+    "@playwright/test": "^1.40.1",
+    "@types/jsdom": "^21.1.6",
+    "@vitest/coverage-v8": "^1.0.4",
+    "@vitest/ui": "^1.0.4",
+    "axe-core": "^4.8.3",
+    "axe-playwright": "^1.2.3",
+    "happy-dom": "^12.10.3",
+    "jsdom": "^23.0.1",
+    "lighthouse": "^11.4.0",
+    "msw": "^2.0.11",
+    "playwright": "^1.40.1",
+    "vite-tsconfig-paths": "^4.2.2",
+    "vitest": "^1.0.4",
+    "vitest-axe": "^0.1.0"
+  },
+  "dependencies": {
+    "@remix-run/react": "^2.4.1",
+    "@remix-run/node": "^2.4.1",
+    "framer-motion": "^10.16.16",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  }
+}

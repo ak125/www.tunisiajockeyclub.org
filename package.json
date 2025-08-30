@@ -38,6 +38,7 @@
     "@remix-run/react": "^2.14.0",
     "@remix-run/serve": "^2.14.0",
     "autoprefixer": "^10.4.14",
+    "passport-custom": "^1.1.1",
     "postcss": "^8.4.24",
     "prisma": "^6.1.0",
     "remix-flat-routes": "^0.6.5",

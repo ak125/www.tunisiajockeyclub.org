@@ -3,25 +3,377 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = "postgresql://MASSDOC_owner:Fv4Eang6HxBb@ep-young-haze-a2gss4oh-pooler.eu-central-1.aws.neon.tech/MASSDOC?sslmode=require"
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model User {
-  id        String    @id @default(cuid())
-  email     String    @unique
-  name      String?
-  password  String
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  sessions  Session[]
+  id            String    @id @default(uuid())
+  email         String    @unique
+  password      String
+  firstName     String?   @map("first_name")
+  lastName      String?   @map("last_name")
+  phone         String?
+  role          String    @default("member")
+  isActive      Boolean   @default(true) @map("is_active")
+  avatarUrl     String?   @map("avatar_url")
+  address       String?
+  city          String?
+  postalCode    String?   @map("postal_code")
+  country       String?   @default("Tunisia")
+  dateOfBirth   DateTime? @map("date_of_birth") @db.Date
+  licenseNumber String?   @unique @map("license_number")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  sessions Session[]
+  owner    Owner?
+  trainer  Trainer?
+  jockey   Jockey?
+
+  @@map("users")
 }
 
 model Session {
-  id           String  @id @default(cuid())
-  userId       String
-  ipAddress    String?
-  userAgent    String?
-  sessionToken String  @unique
-  user         User    @relation(fields: [userId], references: [id])
+  id           String    @id @default(uuid())
+  userId       String    @map("user_id")
+  sessionToken String    @unique @map("session_token")
+  ipAddress    String?   @map("ip_address")
+  userAgent    String?   @map("user_agent")
+  expiresAt    DateTime? @map("expires_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model Racecourse {
+  id        String   @id @default(uuid())
+  name      String
+  code      String   @unique
+  location  String?
+  trackType String?  @map("track_type")
+  capacity  Int?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  races Race[]
+
+  @@map("racecourses")
+}
+
+model Owner {
+  id                 String   @id @default(uuid())
+  userId             String?  @unique @map("user_id")
+  stableName         String?  @map("stable_name")
+  colorsDescription  String?  @map("colors_description")
+  registrationNumber String?  @unique @map("registration_number")
+  isActive           Boolean  @default(true) @map("is_active")
+  createdAt          DateTime @default(now()) @map("created_at")
+
+  user        User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+  horses      Horse[]
+  raceEntries RaceEntry[]
+
+  @@map("owners")
+}
+
+model Trainer {
+  id              String   @id @default(uuid())
+  userId          String?  @unique @map("user_id")
+  licenseNumber   String   @unique @map("license_number")
+  yearsExperience Int?     @map("years_experience")
+  specialization  String?
+  stableLocation  String?  @map("stable_location")
+  isActive        Boolean  @default(true) @map("is_active")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  user        User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+  horses      Horse[]
+  raceEntries RaceEntry[]
+
+  @@map("trainers")
+}
+
+model Jockey {
+  id            String   @id @default(uuid())
+  userId        String?  @unique @map("user_id")
+  licenseNumber String   @unique @map("license_number")
+  weightKg      Decimal? @map("weight_kg") @db.Decimal(5, 2)
+  heightCm      Int?     @map("height_cm")
+  wins          Int      @default(0)
+  places        Int      @default(0)
+  shows         Int      @default(0)
+  isActive      Boolean  @default(true) @map("is_active")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  user        User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+  raceEntries RaceEntry[]
+  raceResults RaceResult[]
+
+  @@map("jockeys")
+}
+
+model RatingHistory {
+  id           String    @id @default(uuid())
+  horseId      String    @map("horse_id")
+  oldRating    Decimal?  @map("old_rating") @db.Decimal(5, 2)
+  newRating    Decimal   @map("new_rating") @db.Decimal(5, 2)
+  changeReason String    @map("change_reason")
+  raceId       String?   @map("race_id")
+  changedAt    DateTime  @default(now()) @map("changed_at")
+  changedBy    String    @map("changed_by")
+  
+  horse Horse @relation(fields: [horseId], references: [id], onDelete: Cascade)
+
+  @@map("rating_history")
+}
+
+model Horse {
+  id                 String    @id @default(uuid())
+  name               String
+  registrationNumber String    @unique @map("registration_number")
+  dateOfBirth        DateTime  @map("date_of_birth") @db.Date
+  sex                String?
+  color              String?
+  breed              String?   @default("Thoroughbred")
+  sireName           String?   @map("sire_name")
+  damName            String?   @map("dam_name")
+  ownerId            String?   @map("owner_id")
+  trainerId          String?   @map("trainer_id")
+  currentRating      Decimal?  @map("current_rating") @db.Decimal(5, 2)
+  isActive           Boolean   @default(true) @map("is_active")
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  owner       Owner?       @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+  trainer     Trainer?     @relation(fields: [trainerId], references: [id], onDelete: SetNull)
+  raceEntries RaceEntry[]
+  raceResults RaceResult[]
+  ratings     HorseRating[]
+  performanceAnalyses PerformanceAnalysis[]
+  ratingHistory RatingHistory[]
+
+  @@map("horses")
+}
+
+model Race {
+  id           String    @id @default(uuid())
+  raceNumber   Int       @map("race_number")
+  raceDate     DateTime  @map("race_date") @db.Date
+  raceTime     DateTime  @map("race_time") @db.Time
+  racecourseId String    @map("racecourse_id")
+  name         String
+  raceType     String?   @map("race_type")
+  raceClass    String?   @map("race_class")
+  category     String?   // Groupe I, II, III, Listed, etc.
+  distanceMeters Int     @map("distance_meters")
+  prizeMoney   Decimal?  @map("prize_money") @db.Decimal(10, 2)
+  conditions   String?
+  terrainState String?   @map("terrain_state") // bon, souple, lourd, etc.
+  maxRunners   Int?      @map("max_runners")
+  status       String    @default("scheduled")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  racecourse  Racecourse  @relation(fields: [racecourseId], references: [id], onDelete: Cascade)
+  raceEntries RaceEntry[]
+  raceResults RaceResult[]
+  performanceAnalyses PerformanceAnalysis[]
+
+  @@unique([raceDate, racecourseId, raceNumber])
+  @@map("races")
+}
+
+model RaceEntry {
+  id              String   @id @default(uuid())
+  raceId          String   @map("race_id")
+  horseId         String   @map("horse_id")
+  jockeyId        String?  @map("jockey_id")
+  trainerId       String?  @map("trainer_id")
+  ownerId         String?  @map("owner_id")
+  clothNumber     Int?     @map("cloth_number")
+  drawPosition    Int?     @map("draw_position")
+  weightCarriedKg Decimal? @map("weight_carried_kg") @db.Decimal(5, 2)
+  odds            Decimal? @db.Decimal(6, 2)
+  scratched       Boolean  @default(false)
+  scratchedReason String?  @map("scratched_reason")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  race    Race     @relation(fields: [raceId], references: [id], onDelete: Cascade)
+  horse   Horse    @relation(fields: [horseId], references: [id], onDelete: Cascade)
+  jockey  Jockey?  @relation(fields: [jockeyId], references: [id], onDelete: SetNull)
+  trainer Trainer? @relation(fields: [trainerId], references: [id], onDelete: SetNull)
+  owner   Owner?   @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+
+  @@unique([raceId, horseId])
+  @@map("race_entries")
+}
+
+model RaceResult {
+  id                      String   @id @default(uuid())
+  raceId                  String   @map("race_id")
+  horseId                 String   @map("horse_id")
+  jockeyId                String?  @map("jockey_id")
+  position                Int
+  timeSeconds             Decimal? @map("time_seconds") @db.Decimal(8, 2)
+  lengthsBehind           Decimal? @map("lengths_behind") @db.Decimal(5, 2)
+  startingPrice           Decimal? @map("starting_price") @db.Decimal(6, 2)
+  weightCarriedKg         Decimal? @map("weight_carried_kg") @db.Decimal(5, 2)
+  comments                String?
+  disqualified            Boolean  @default(false)
+  disqualificationReason  String?  @map("disqualification_reason")
+  createdAt               DateTime @default(now()) @map("created_at")
+
+  race   Race    @relation(fields: [raceId], references: [id], onDelete: Cascade)
+  horse  Horse   @relation(fields: [horseId], references: [id], onDelete: Cascade)
+  jockey Jockey? @relation(fields: [jockeyId], references: [id], onDelete: SetNull)
+
+  @@unique([raceId, position])
+  @@map("race_results")
+}
+
+// Modèles pour le système de rating IFHA (compatible avec existant)
+model HorseRating {
+  id              String    @id @default(uuid())
+  horseId         String    @map("horse_id")
+  
+  // Rating principal (compatible avec l'existant)
+  ratingValue     Decimal   @map("rating_value") @db.Decimal(5, 2)
+  previousValue   Decimal?  @map("previous_value") @db.Decimal(5, 2)
+  ratingType      String    @map("rating_type") // auto, manual, import, validated
+  confidenceLevel Decimal   @default(50.0) @map("confidence_level") @db.Decimal(5, 2)
+  
+  // Nouveaux champs IFHA (extensions)
+  franceRating    Decimal?  @map("france_rating") @db.Decimal(5, 2)
+  ukRating        Decimal?  @map("uk_rating") @db.Decimal(5, 2)
+  uaeRating       Decimal?  @map("uae_rating") @db.Decimal(5, 2)
+  ifhaRating      Decimal?  @map("ifha_rating") @db.Decimal(5, 2)
+  
+  // Historique des performances
+  racesAnalyzed   Int       @default(0) @map("races_analyzed")
+  lastRaceDate    DateTime? @map("last_race_date")
+  adjustmentReason String?  @map("adjustment_reason")
+  
+  // Validation
+  isValidated     Boolean   @default(false) @map("is_validated")
+  validatedBy     String?   @map("validated_by")
+  validatedAt     DateTime? @map("validated_at")
+  
+  // Système (compatible avec existant)
+  isCurrent       Boolean   @default(true) @map("is_current")
+  assignedAt      DateTime  @default(now()) @map("assigned_at")
+  assignedBy      String?   @map("assigned_by")
+  notes           String?
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  horse               Horse                 @relation(fields: [horseId], references: [id], onDelete: Cascade)
+  performanceAnalyses PerformanceAnalysis[]
+  ratingAdjustments   RatingAdjustment[]
+
+  @@map("horse_ratings")
+}
+
+model PerformanceAnalysis {
+  id                    String    @id @default(uuid())
+  raceId                String    @map("race_id")
+  horseId               String    @map("horse_id")
+  ratingId              String?   @map("rating_id")
+  
+  // Données de la course
+  positionFinish        Int       @map("position_finish")
+  lengthsBehind         Decimal?  @map("lengths_behind") @db.Decimal(5, 2)
+  weightCarried         Decimal   @map("weight_carried") @db.Decimal(5, 2)
+  terrainCondition      String?   @map("terrain_condition")
+  raceCategory          String?   @map("race_category")
+  distanceMeters        Int       @map("distance_meters")
+  
+  // Ajustements calculés
+  weightAdjustment      Decimal   @default(0) @map("weight_adjustment") @db.Decimal(4, 2)
+  terrainAdjustment     Decimal   @default(0) @map("terrain_adjustment") @db.Decimal(4, 2)
+  courseAdjustment      Decimal   @default(0) @map("course_adjustment") @db.Decimal(4, 2)
+  classAdjustment       Decimal   @default(0) @map("class_adjustment") @db.Decimal(4, 2)
+  
+  // Résultats
+  performanceRating     Decimal?  @map("performance_rating") @db.Decimal(5, 2)
+  ratingAdjustment      Decimal?  @map("rating_adjustment") @db.Decimal(4, 2)
+  
+  // Métadonnées
+  analyzedAt            DateTime  @default(now()) @map("analyzed_at")
+  analyzedBy            String?   @map("analyzed_by")
+  analysisNotes         String?   @map("analysis_notes")
+  validatedAt           DateTime? @map("validated_at")
+  validatedBy           String?   @map("validated_by")
+
+  race   Race         @relation(fields: [raceId], references: [id], onDelete: Cascade)
+  horse  Horse        @relation(fields: [horseId], references: [id], onDelete: Cascade)
+  rating HorseRating? @relation(fields: [ratingId], references: [id], onDelete: SetNull)
+
+  @@map("performance_analyses")
+}
+
+model RatingAdjustment {
+  id              String   @id @default(uuid())
+  horseRatingId   String   @map("horse_rating_id")
+  
+  previousRating  Decimal  @map("previous_rating") @db.Decimal(5, 2)
+  newRating       Decimal  @map("new_rating") @db.Decimal(5, 2)
+  adjustmentType  String   @map("adjustment_type") // performance, import_reference, manual, ifha_sync
+  
+  // Détails de l'ajustement
+  raceId          String?  @map("race_id")
+  referenceHorseId String? @map("reference_horse_id")
+  lengthsBehind   Decimal? @map("lengths_behind") @db.Decimal(5, 2)
+  weightCarried   Decimal? @map("weight_carried") @db.Decimal(5, 2)
+  distance        Int?     @map("distance")
+  
+  notes           String?
+  adjustedBy      String   @map("adjusted_by")
+  createdAt       DateTime @default(now()) @map("created_at")
+  
+  horseRating HorseRating @relation(fields: [horseRatingId], references: [id], onDelete: Cascade)
+
+  @@map("rating_adjustments")
+}
+
+model InternationalReference {
+  id            String   @id @default(uuid())
+  horseName     String   @map("horse_name")
+  country       String   // "FR", "UK", "UAE", "IFHA", etc.
+  officialRating Decimal @map("official_rating") @db.Decimal(5, 2)
+  ifhaRating    Decimal? @map("ifha_rating") @db.Decimal(5, 2)
+  
+  lastUpdate    DateTime @map("last_update")
+  source        String   // "FranceGalop", "BHA", "IFHA", "ERA", etc.
+  verified      Boolean  @default(false)
+  
+  // Métadonnées additionnelles
+  age           Int?
+  lastRaceDate  DateTime? @map("last_race_date")
+  category      String?   // "Group1", "Group2", "Listed", etc.
+  
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @default(now()) @updatedAt @map("updated_at")
+  
+  @@unique([horseName, country])
+  @@index([country])
+  @@index([officialRating])
+  @@index([horseName])
+  @@map("international_references")
+}
+
+model RatingConversionTable {
+  id          String  @id @default(uuid())
+  tunisiaMin  Decimal @map("tunisia_min") @db.Decimal(5, 2)
+  tunisiaMax  Decimal @map("tunisia_max") @db.Decimal(5, 2)
+  franceRating Decimal @map("france_rating") @db.Decimal(5, 2)
+  ukRating    Decimal @map("uk_rating") @db.Decimal(5, 2)
+  uaeRating   Decimal @map("uae_rating") @db.Decimal(5, 2)
+  ifhaRating  Decimal @map("ifha_rating") @db.Decimal(5, 2)
+  comment     String?
+  isActive    Boolean @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  
+  @@map("rating_conversion_tables")
 }

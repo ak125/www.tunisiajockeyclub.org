@@ -1,121 +1,154 @@
-import { getFormProps, getInputProps, useForm } from '@conform-to/react';
-import { getZodConstraint, parseWithZod } from '@conform-to/zod';
-import { json, redirect, type ActionFunctionArgs, type LoaderFunctionArgs } from "@remix-run/node";
-import { Form, useActionData } from '@remix-run/react';
-import { z } from 'zod';
-import { Field } from '~/components/forms';
+import { json, redirect } from '@remix-run/node';
+import { Form, useActionData, useNavigation } from '@remix-run/react';
+import type { ActionFunctionArgs, MetaFunction } from '@remix-run/node';
 import { Button } from '~/components/ui/button';
-import { getOptionalUser } from "~/server/auth.server";
+import { Input } from '~/components/ui/input';
+import { Label } from '~/components/ui/label';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '~/components/ui/card';
+import { getSession, commitSession } from '~/utils/session.server';
 
-
-export const loader = async ({ request, context }: LoaderFunctionArgs) => {
-    const user = await getOptionalUser({ context })
-    if (user) {
-        return redirect('/')
-    }
-    return null;
+export const meta: MetaFunction = () => {
+  return [
+    { title: 'Connexion - Tunisia Jockey Club' },
+    { name: 'description', content: 'Connectez-vous à votre compte Tunisia Jockey Club' },
+  ];
 };
 
+export async function action({ request }: ActionFunctionArgs) {
+  const formData = await request.formData();
+  const email = formData.get('email');
+  const password = formData.get('password');
 
-export const action = async ({ request, context }: ActionFunctionArgs) => {
-    const formData = await request.formData();
-   
-    const submission = await parseWithZod(formData, {
-        async: true,
-        schema: LoginSchema.superRefine(async (data, ctx) => {
-            const { email, password } = data;
+  // Validation basique
+  if (typeof email !== 'string' || typeof password !== 'string') {
+    return json(
+      { errors: { email: 'Email requis', password: 'Mot de passe requis' } },
+      { status: 400 }
+    );
+  }
 
-            const existingUser = await context.remixService.auth.checkIfUserExists({
-                email,
-                withPassword: true,
-                password,
-            });
+  if (email.length === 0) {
+    return json(
+      { errors: { email: 'Email requis', password: null } },
+      { status: 400 }
+    );
+  }
 
-            if (existingUser.error) {
-                ctx.addIssue({
-                    code: 'custom',
-                    path: ['email'],
-                    message: existingUser.message,
-                });
-            }
-        }),
+  if (password.length === 0) {
+    return json(
+      { errors: { email: null, password: 'Mot de passe requis' } },
+      { status: 400 }
+    );
+  }
+
+  try {
+    // Utiliser le backend NestJS pour l'authentification
+    const response = await fetch('http://localhost:3000/api/auth/login', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email, password }),
     });
 
-    if (submission.status !== 'success') {
-        return json(
-            { result: submission.reply() },
-            {
-                status: 400,
-            }
-        );
+    const result = await response.json();
+    console.log('Réponse authentification backend:', result);
+
+    if (result.success) {
+      // Authentification réussie - créer la session Remix
+      const session = await getSession(request.headers.get('Cookie'));
+      session.set('user', result.user);
+      
+      const cookie = await commitSession(session);
+      
+      return redirect('/dashboard', {
+        headers: {
+          'Set-Cookie': cookie,
+        },
+      });
+    } else {
+      return json(
+        { 
+          errors: { 
+            email: null, 
+            password: result.message || 'Email ou mot de passe invalide' 
+          } 
+        },
+        { status: 400 }
+      );
     }
-    // l'email et le mot de passe sont valides, et un compte utilisateur existe.
-    // connecter l'utilisateur.
-    const { email } = submission.value;
-    const { sessionToken } = await context.remixService.auth.authenticateUser({
-        email,
-    });
-
-    // Connecter l'utilisateur associé à l'email
-    return redirect(`/authenticate?token=${sessionToken}`);
-};
-
-const LoginSchema = z.object({
-    email: z
-        .string({
-            required_error: "L'email est obligatoire.",
-        })
-        .email({
-            message: 'Cet email est invalide.',
-        }),
-    password: z.string({ required_error: 'Le mot de passe est obligatoire.' }),
-});
+  } catch (error) {
+    console.error('Erreur lors de l\'authentification:', error);
+    return json(
+      { 
+        errors: { 
+          email: null, 
+          password: 'Erreur de connexion au serveur' 
+        } 
+      },
+      { status: 500 }
+    );
+  }
+}
 
 export default function Login() {
-    const actionData = useActionData<typeof action>();
-    const [form, fields] = useForm({
-        constraint: getZodConstraint(LoginSchema),
-        onValidate({ formData }) {
-            return parseWithZod(formData, {
-                schema: LoginSchema,
-            });
-        },
-        lastResult: actionData?.result,
-    });
-    return (
-        <div className='max-w-[600px] mx-auto'>
-            <h1>Connexion</h1>
-            <Form
-                {...getFormProps(form)}
-                method='POST'
-                // action='/auth/login'
-                reloadDocument
-                className='flex flex-col gap-4'
+  const actionData = useActionData<typeof action>();
+  const navigation = useNavigation();
+  const isSubmitting = navigation.state === 'submitting';
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-green-50 to-green-100 flex items-center justify-center p-4">
+      <Card className="w-full max-w-md">
+        <CardHeader className="space-y-1">
+          <CardTitle className="text-2xl font-bold text-center text-green-800">
+            Tunisia Jockey Club
+          </CardTitle>
+          <CardDescription className="text-center text-green-600">
+            Connectez-vous à votre compte
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Form method="post" className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                name="email"
+                type="email"
+                required
+                placeholder="votre@email.com"
+                className="w-full"
+              />
+              {actionData?.errors?.email && (
+                <div className="text-red-500 text-sm">{actionData.errors.email}</div>
+              )}
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="password">Mot de passe</Label>
+              <Input
+                id="password"
+                name="password"
+                type="password"
+                required
+                placeholder="Votre mot de passe"
+                className="w-full"
+              />
+              {actionData?.errors?.password && (
+                <div className="text-red-500 text-sm">{actionData.errors.password}</div>
+              )}
+            </div>
+            
+            <Button 
+              type="submit" 
+              className="w-full bg-green-600 hover:bg-green-700"
+              disabled={isSubmitting}
             >
-                <Field
-                    inputProps={getInputProps(fields.email, {
-                        type: 'email',
-                    })}
-                    labelsProps={{
-                        children: 'Adresse e-email',
-                    }}
-                    errors={fields.email.errors}
-                />
-
-                <Field
-                    inputProps={getInputProps(fields.password, {
-                        type: 'password',
-                    })}
-                    labelsProps={{
-                        children: 'Mot de passe',
-                    }}
-                    errors={fields.password.errors}
-                />
-
-                <Button className='ml-auto' type='submit'>
-                    Se connecter
-                </Button>
-            </Form>
-        </div>
-    );
+              {isSubmitting ? 'Connexion...' : 'Se connecter'}
+            </Button>
+          </Form>
+        </CardContent>
+      </Card>
+    </div>
+  );
 }
