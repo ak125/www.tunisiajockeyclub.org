@@ -1,176 +1,177 @@
-import { json, type LoaderFunctionArgs } from "@remix-run/node";
+import { json } from "@remix-run/node";
 import { useLoaderData } from "@remix-run/react";
-import { motion } from "framer-motion";
 import { 
-  Trophy, Zap, Users, DollarSign, 
-  TrendingUp, Activity, Calendar, MapPin 
+  Trophy, Users, Calendar, Activity,
+  TrendingUp, AlertTriangle, Clock, Target
 } from "lucide-react";
-import { DashboardLayout } from "~/components/dashboard/layout";
+import { createSecureLoader } from "../utils/auth.server";
 
-export const loader = async ({ context }: LoaderFunctionArgs) => {
-  // Récupérer les données du dashboard
+export const loader = createSecureLoader(async ({ context }) => {
+  // En production, récupérer les vraies données depuis l'API
   const stats = {
-    totalRaces: 127,
-    activeHorses: 342,
-    totalUsers: 1584,
-    revenue: 125430,
+    totalRaces: 124,
+    totalUsers: 89,
+    activeJockeys: 32,
+    upcomingRaces: 8,
+    todayEntries: 45,
+    pendingApprovals: 3
   };
-  
-  const recentRaces = [
-    { id: '1', name: 'Prix de Carthage', date: '2025-08-21', status: 'upcoming' },
-    { id: '2', name: 'Prix de Tunis', date: '2025-08-20', status: 'finished' },
-    { id: '3', name: 'Prix de Kassar Said', date: '2025-08-19', status: 'finished' },
+
+  const recentActivity = [
+    { type: 'race_created', message: 'Nouvelle course "Prix de Carthage" créée', time: '2 min ago' },
+    { type: 'user_registered', message: 'Nouveau membre: Ahmed Trabelsi', time: '15 min ago' },
+    { type: 'result_updated', message: 'Résultats du Prix de Tunis mis à jour', time: '1h ago' },
+    { type: 'approval_pending', message: 'Inscription en attente d\'approbation', time: '2h ago' }
   ];
 
-  return json({ stats, recentRaces });
-};
+  return json({ 
+    user: context.user,
+    stats,
+    recentActivity 
+  });
+}, { requireAuth: true, minRole: 'ADMIN' });
 
 export default function AdminDashboard() {
-  const { stats, recentRaces } = useLoaderData<typeof loader>();
+  const { stats, recentActivity } = useLoaderData<typeof loader>();
 
-  const statsCards = [
-    {
-      title: "Courses Totales",
-      value: stats.totalRaces.toLocaleString(),
-      change: "+12%",
-      icon: Trophy,
-      color: "text-blue-600",
-      bgColor: "bg-blue-100"
+  const statCards = [
+    { 
+      title: 'Total Courses', 
+      value: stats.totalRaces.toString(), 
+      icon: Trophy, 
+      color: 'text-blue-600',
+      change: '+12%'
     },
-    {
-      title: "Chevaux Actifs",
-      value: stats.activeHorses.toLocaleString(),
-      change: "+5%",
-      icon: Zap,
-      color: "text-purple-600",
-      bgColor: "bg-purple-100"
+    { 
+      title: 'Utilisateurs', 
+      value: stats.totalUsers.toString(), 
+      icon: Users, 
+      color: 'text-green-600',
+      change: '+8%'
     },
-    {
-      title: "Utilisateurs",
-      value: stats.totalUsers.toLocaleString(),
-      change: "+18%",
-      icon: Users,
-      color: "text-green-600",
-      bgColor: "bg-green-100"
+    { 
+      title: 'Jockeys Actifs', 
+      value: stats.activeJockeys.toString(), 
+      icon: Activity, 
+      color: 'text-purple-600',
+      change: '+5%'
     },
-    {
-      title: "Revenus (TND)",
-      value: stats.revenue.toLocaleString(),
-      change: "+23%",
-      icon: DollarSign,
-      color: "text-orange-600",
-      bgColor: "bg-orange-100"
+    { 
+      title: 'Courses à venir', 
+      value: stats.upcomingRaces.toString(), 
+      icon: Calendar, 
+      color: 'text-orange-600',
+      change: '+3'
     }
   ];
 
   return (
-    <DashboardLayout>
-      <div className="space-y-8">
-        {/* Header */}
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">
-              Tableau de Bord
-            </h1>
-            <p className="text-gray-600">
-              Bienvenue sur votre centre de contrôle TJC
-            </p>
-          </div>
-          
-          {/* Live Updates */}
-          <div className="flex items-center space-x-4">
-            <div className="flex items-center space-x-2">
-              <Activity className="w-5 h-5 text-green-500" />
-              <div className="text-center">
-                <div className="text-lg font-bold">234</div>
-                <div className="text-xs text-gray-500">En ligne</div>
+    <div className="p-8 bg-white min-h-screen">
+      {/* Header */}
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">
+          Dashboard Administrateur
+        </h1>
+        <p className="text-gray-600">
+          Vue d'ensemble du système - Tunisia Jockey Club
+        </p>
+      </div>
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        {statCards.map((stat, index) => (
+          <div key={index} className="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow border">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600 mb-1">{stat.title}</p>
+                <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
+                <p className="text-xs text-green-600 flex items-center mt-2">
+                  <TrendingUp className="w-3 h-3 mr-1" />
+                  {stat.change}
+                </p>
               </div>
-            </div>
-            <div className="flex items-center space-x-2">
-              <Trophy className="w-5 h-5 text-yellow-500" />
-              <div className="text-center">
-                <div className="text-lg font-bold">24</div>
-                <div className="text-xs text-gray-500">Courses actives</div>
-              </div>
+              <stat.icon className={`h-8 w-8 ${stat.color}`} />
             </div>
           </div>
-        </div>
+        ))}
+      </div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {statsCards.map((card, index) => (
-            <motion.div
-              key={card.title}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.1 }}
-              className="bg-white rounded-xl shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-1"
-            >
-              <div className="p-6">
-                <div className="flex justify-between items-start mb-4">
-                  <div className={`p-3 ${card.bgColor} rounded-xl`}>
-                    <card.icon className={`w-6 h-6 ${card.color}`} />
-                  </div>
-                  <div className="flex items-center space-x-1 text-sm text-green-600">
-                    <TrendingUp className="w-4 h-4" />
-                    <span>{card.change}</span>
-                  </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* Activité Récente */}
+        <div className="bg-white p-6 rounded-lg shadow-md border">
+          <div className="flex items-center gap-2 mb-4">
+            <Clock className="w-5 h-5" />
+            <h2 className="text-lg font-semibold">Activité Récente</h2>
+          </div>
+          <div className="space-y-4">
+            {recentActivity.map((activity, index) => (
+              <div key={index} className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
+                <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-gray-900">
+                    {activity.message}
+                  </p>
+                  <p className="text-xs text-gray-500">{activity.time}</p>
                 </div>
-                <h3 className="text-gray-600 text-sm mb-1">{card.title}</h3>
-                <p className="text-2xl font-bold text-gray-800">{card.value}</p>
+                {activity.type === 'approval_pending' && (
+                  <AlertTriangle className="w-4 h-4 text-orange-500" />
+                )}
               </div>
-            </motion.div>
-          ))}
-        </div>
-
-        {/* Recent Races */}
-        <div className="bg-white rounded-xl shadow-lg p-6">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-            <Trophy className="w-5 h-5 mr-2 text-blue-600" />
-            Prochaines Courses
-          </h3>
-          <div className="space-y-3">
-            {recentRaces.map((race, index) => (
-              <motion.div
-                key={race.id}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: index * 0.1 }}
-                className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
-              >
-                <div className="flex items-center space-x-4">
-                  <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold">
-                    R{index + 1}
-                  </div>
-                  <div>
-                    <p className="font-semibold text-gray-800">{race.name}</p>
-                    <div className="flex items-center space-x-4 text-sm text-gray-500">
-                      <div className="flex items-center space-x-1">
-                        <Calendar className="w-4 h-4" />
-                        <span>{new Date(race.date).toLocaleDateString('fr-FR')}</span>
-                      </div>
-                      <div className="flex items-center space-x-1">
-                        <MapPin className="w-4 h-4" />
-                        <span>Hippodrome de Kassar Saïd</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                    race.status === 'upcoming' 
-                      ? 'bg-blue-100 text-blue-800' 
-                      : 'bg-gray-100 text-gray-800'
-                  }`}>
-                    {race.status === 'upcoming' ? 'À venir' : 'Terminée'}
-                  </span>
-                  <p className="text-sm text-gray-500 mt-1">12 chevaux inscrits</p>
-                </div>
-              </motion.div>
             ))}
           </div>
         </div>
+
+        {/* Actions Rapides */}
+        <div className="bg-white p-6 rounded-lg shadow-md border">
+          <div className="flex items-center gap-2 mb-4">
+            <Target className="w-5 h-5" />
+            <h2 className="text-lg font-semibold">Actions Rapides</h2>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <button className="p-4 bg-blue-50 hover:bg-blue-100 rounded-lg text-left transition-colors">
+              <Calendar className="w-8 h-8 text-blue-600 mb-2" />
+              <h3 className="font-semibold text-gray-900">Nouvelle Course</h3>
+              <p className="text-sm text-gray-600">Créer une course</p>
+            </button>
+
+            <button className="p-4 bg-green-50 hover:bg-green-100 rounded-lg text-left transition-colors">
+              <Users className="w-8 h-8 text-green-600 mb-2" />
+              <h3 className="font-semibold text-gray-900">Gérer Utilisateurs</h3>
+              <p className="text-sm text-gray-600">Voir les membres</p>
+            </button>
+
+            <button className="p-4 bg-purple-50 hover:bg-purple-100 rounded-lg text-left transition-colors">
+              <Trophy className="w-8 h-8 text-purple-600 mb-2" />
+              <h3 className="font-semibold text-gray-900">Résultats</h3>
+              <p className="text-sm text-gray-600">Saisir résultats</p>
+            </button>
+
+            <button className="p-4 bg-orange-50 hover:bg-orange-100 rounded-lg text-left transition-colors">
+              <Activity className="w-8 h-8 text-orange-600 mb-2" />
+              <h3 className="font-semibold text-gray-900">Analytics</h3>
+              <p className="text-sm text-gray-600">Voir statistiques</p>
+            </button>
+          </div>
+        </div>
       </div>
-    </DashboardLayout>
+
+      {/* Alertes / Notifications */}
+      {stats.pendingApprovals > 0 && (
+        <div className="mt-8 p-6 bg-orange-50 border border-orange-200 rounded-lg">
+          <div className="flex items-center gap-2 mb-2">
+            <AlertTriangle className="w-5 h-5 text-orange-600" />
+            <h3 className="font-semibold text-orange-800">Attention requise</h3>
+          </div>
+          <div className="flex items-center justify-between">
+            <p className="text-orange-700">
+              {stats.pendingApprovals} inscriptions en attente d'approbation
+            </p>
+            <span className="px-3 py-1 bg-orange-100 text-orange-600 rounded-full text-sm font-medium">
+              Action requise
+            </span>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }

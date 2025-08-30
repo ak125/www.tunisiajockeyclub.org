@@ -1,37 +1,9 @@
-import { json, type LoaderFunctionArgs } from "@remix-run/node";
-import { useLoaderData, Link } from '@remix-run/react';
-import { Trophy, TrendingUp, Calculator, Award, BarChart3 } from 'lucide-react';
+import { redirect } from "@remix-run/node";
 
-// Import du nouveau design system
-import {
-  Container,
-  Section,
-  HeroTitle,
-  SectionTitle,
-  LinkPrimary,
-  LinkSecondary,
-  Card,
-  StatBand,
-  CardGrid,
-  Header,
-  Logo,
-  CTABand,
-  Footer,
-  SystemStatus
-} from '../components/design-system/Institutional';
-
-export const loader = async ({ request }: LoaderFunctionArgs) => {
-  return json({
-    user: null,
-    stats: {
-      totalRaces: 124,
-      activeHorses: 89,
-      registeredJockeys: 32,
-      upcomingEvents: 8
-    },
-    timestamp: new Date().toISOString(),
-  });
-};
+export async function loader() {
+  // Redirection vers la page publique par défaut
+  return redirect("/public");
+}
 
 // Header institutionnel avec nouveau design
 function InstitutionalHeader() {

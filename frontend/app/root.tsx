@@ -9,12 +9,12 @@ import { Toaster } from "react-hot-toast";
 import "./global.css";
 import "./styles/design-system.css";
 import logo from "./routes/_assets/logo-automecanik-dark.png";
-import { getOptionalUser } from "./server/auth.server";
+import { getOptionalUser } from "./utils/auth.server";
 
 export const links: LinksFunction = () => [];
 
-export const loader = async ({ request,context }: LoaderFunctionArgs) => {
-  const user = await getOptionalUser({ context });
+export const loader = async ({ request }: LoaderFunctionArgs) => {
+  const user = await getOptionalUser(request);
   return json({ 
     user
     });

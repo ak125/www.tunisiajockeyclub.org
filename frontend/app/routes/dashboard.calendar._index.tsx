@@ -1,455 +1,426 @@
-import { json, type LoaderFunctionArgs } from "@remix-run/node";
-import { useLoaderData } from '@remix-run/react';
-import { Calendar, ChevronLeft, ChevronRight, Plus, Clock, MapPin, Trophy, Users, Filter } from 'lucide-react';
-import { Button } from '~/components/ui/button';
+import { type LoaderFunctionArgs, json } from '@remix-run/node';
+import { useLoaderData, useOutletContext, Link } from '@remix-run/react';
+import { 
+  Calendar, Clock, MapPin, Users, Trophy, AlertCircle,
+  Plus, Eye, Settings, Filter, ChevronLeft, ChevronRight
+} from 'lucide-react';
+import { useState } from 'react';
 
-export const loader = async ({ request }: LoaderFunctionArgs) => {
-  // Mock data pour le calendrier
-  const events = [
+export async function loader({ request }: LoaderFunctionArgs) {
+  try {
+    // Récupérer les événements depuis le backend
+    const eventsResponse = await fetch('http://localhost:3000/api/events/list');
+    const racesResponse = await fetch('http://localhost:3000/api/races/list');
+
+    const events = eventsResponse.ok ? await eventsResponse.json() : { events: [] };
+    const races = racesResponse.ok ? await racesResponse.json() : { races: [] };
+
+    return json({
+      events: events.events || [],
+      races: races.races || [],
+      upcomingCount: 0, // À calculer
+    });
+  } catch (error) {
+    console.error('Erreur chargement calendrier:', error);
+    return json({
+      events: [],
+      races: [],
+      upcomingCount: 0,
+    });
+  }
+}
+
+export default function DashboardCalendar() {
+  const { events, races } = useLoaderData<typeof loader>();
+  const { permissions } = useOutletContext<{
+    permissions: any;
+  }>();
+
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [viewType, setViewType] = useState<'month' | 'week' | 'list'>('month');
+  const [filterType, setFilterType] = useState<'all' | 'races' | 'events'>('all');
+
+  // Données simulées pour le développement
+  const sampleEvents = [
     {
       id: 1,
-      title: "Prix de Carthage",
-      date: "2025-08-25",
-      time: "14:30",
-      venue: "Hippodrome de Carthage",
-      type: "course",
-      category: "Galop",
-      distance: "1600m",
+      title: 'Course Hippique de Kasserine',
+      type: 'race',
+      date: '2025-08-30',
+      time: '15:00',
+      location: 'Hippodrome de Kasserine',
+      status: 'confirmed',
       participants: 12,
-      prize: "25,000 TND",
-      status: "confirmed",
-      weather: "ensoleillé"
+      priority: 'high'
     },
     {
       id: 2,
-      title: "Grand Prix de Tunis",
-      date: "2025-08-28",
-      time: "15:00",
-      venue: "Hippodrome de Tunis",
-      type: "course",
-      category: "Galop",
-      distance: "2000m",
-      participants: 16,
-      prize: "50,000 TND",
-      status: "confirmed",
-      weather: "nuageux"
+      title: 'Assemblée Générale TJC',
+      type: 'meeting',
+      date: '2025-09-05',
+      time: '14:00',
+      location: 'Siège TJC, Tunis',
+      status: 'confirmed',
+      participants: 25,
+      priority: 'medium'
     },
     {
       id: 3,
-      title: "Entraînement matinal",
-      date: "2025-08-26",
-      time: "07:00",
-      venue: "Piste d'entraînement",
-      type: "training",
-      category: "Entraînement",
+      title: 'Formation Jockeys Apprentis',
+      type: 'training',
+      date: '2025-09-10',
+      time: '09:00',
+      location: 'Centre d\'Entraînement',
+      status: 'planning',
       participants: 8,
-      status: "scheduled",
-      distance: undefined,
-      prize: undefined,
-      weather: undefined
+      priority: 'low'
     },
     {
       id: 4,
-      title: "Visite vétérinaire",
-      date: "2025-08-27",
-      time: "10:00",
-      venue: "Écuries du club",
-      type: "medical",
-      category: "Santé",
-      participants: 5,
-      status: "scheduled",
-      distance: undefined,
-      prize: undefined,
-      weather: undefined
+      title: 'Prix du Président - Grand Prix',
+      type: 'race',
+      date: '2025-09-15',
+      time: '16:00',
+      location: 'Hippodrome Sousse',
+      status: 'confirmed',
+      participants: 18,
+      priority: 'high'
     },
     {
       id: 5,
-      title: "Course d'obstacles",
-      date: "2025-08-30",
-      time: "16:00",
-      venue: "Hippodrome de Sousse",
-      type: "course",
-      category: "Obstacles",
-      distance: "3200m",
-      participants: 10,
-      prize: "18,000 TND",
-      status: "pending",
-      weather: "variable"
-    },
-    {
-      id: 6,
-      title: "Compétition junior",
-      date: "2025-09-02",
-      time: "13:00",
-      venue: "Hippodrome de Bizerte",
-      type: "course",
-      category: "Junior",
-      distance: "1200m",
-      participants: 14,
-      prize: "15,000 TND",
-      status: "confirmed",
-      weather: "ensoleillé"
+      title: 'Inspection Vétérinaire',
+      type: 'inspection',
+      date: '2025-09-12',
+      time: '10:00',
+      location: 'Multiple locations',
+      status: 'confirmed',
+      participants: 6,
+      priority: 'medium'
     }
   ];
 
-  // Statistiques du mois
-  const stats = {
-    totalEvents: events.length,
-    courses: events.filter(e => e.type === 'course').length,
-    entrainements: events.filter(e => e.type === 'training').length,
-    medical: events.filter(e => e.type === 'medical').length,
-    totalPrize: events
-      .filter(e => e.prize)
-      .reduce((sum, e) => sum + parseInt(e.prize!.replace(/[^\d]/g, '')), 0),
-    totalParticipants: events.reduce((sum, e) => sum + e.participants, 0)
-  };
+  const allEvents = [...sampleEvents, ...events, ...races];
+  const filteredEvents = allEvents.filter(event => {
+    if (filterType === 'all') return true;
+    if (filterType === 'races') return event.type === 'race';
+    return event.type !== 'race';
+  });
 
-  return json({ events, stats });
-};
-
-export default function CalendarPage() {
-  const { events, stats } = useLoaderData<typeof loader>();
-
-  // Date actuelle et navigation
-  const today = new Date();
-  const currentMonth = today.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
-
-  const getEventTypeIcon = (type: string) => {
+  const getEventTypeColor = (type: string) => {
     switch (type) {
-      case 'course':
-        return <Trophy className="w-4 h-4 text-yellow-600" />;
-      case 'training':
-        return <Users className="w-4 h-4 text-blue-600" />;
-      case 'medical':
-        return <Plus className="w-4 h-4 text-green-600" />;
-      default:
-        return <Calendar className="w-4 h-4 text-gray-600" />;
+      case 'race': return 'bg-blue-100 text-blue-800';
+      case 'meeting': return 'bg-purple-100 text-purple-800';
+      case 'training': return 'bg-green-100 text-green-800';
+      case 'inspection': return 'bg-orange-100 text-orange-800';
+      default: return 'bg-gray-100 text-gray-800';
     }
   };
 
-  const getStatusBadge = (status: string) => {
+  const getStatusColor = (status: string) => {
     switch (status) {
-      case 'confirmed':
-        return (
-          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-            Confirmé
-          </span>
-        );
-      case 'pending':
-        return (
-          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-            En attente
-          </span>
-        );
-      case 'scheduled':
-        return (
-          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-            Programmé
-          </span>
-        );
-      default:
-        return null;
+      case 'confirmed': return 'text-green-600';
+      case 'planning': return 'text-yellow-600';
+      case 'cancelled': return 'text-red-600';
+      default: return 'text-gray-600';
     }
   };
 
-  const getTypeColor = (type: string) => {
-    switch (type) {
-      case 'course':
-        return 'border-l-yellow-500 bg-yellow-50';
-      case 'training':
-        return 'border-l-blue-500 bg-blue-50';
-      case 'medical':
-        return 'border-l-green-500 bg-green-50';
-      default:
-        return 'border-l-gray-500 bg-gray-50';
+  const getPriorityColor = (priority: string) => {
+    switch (priority) {
+      case 'high': return 'border-l-red-500';
+      case 'medium': return 'border-l-yellow-500';
+      case 'low': return 'border-l-green-500';
+      default: return 'border-l-gray-300';
     }
   };
 
-  // Grouper les événements par date
-  const eventsByDate = events.reduce((acc, event) => {
-    const date = event.date;
-    if (!acc[date]) {
-      acc[date] = [];
-    }
-    acc[date].push(event);
-    return acc;
-  }, {} as Record<string, typeof events>);
+  const formatEventTime = (date: string, time: string) => {
+    return new Date(`${date}T${time}`).toLocaleString('fr-FR', {
+      weekday: 'short',
+      day: 'numeric',
+      month: 'short',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
 
-  const sortedDates = Object.keys(eventsByDate).sort();
+  const upcomingEvents = filteredEvents.filter(event => 
+    new Date(event.date) >= new Date()
+  ).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+  const todaysEvents = filteredEvents.filter(event => {
+    const today = new Date().toISOString().split('T')[0];
+    return event.date === today;
+  });
 
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">📅 Calendrier des Événements</h1>
-          <p className="text-gray-600 mt-2">Planifiez et suivez toutes les activités du club</p>
+          <h1 className="text-2xl font-bold text-gray-900 flex items-center">
+            <Calendar className="h-6 w-6 text-blue-600 mr-2" />
+            Calendrier des Événements
+          </h1>
+          <p className="text-gray-600">
+            Gestion des courses, réunions et événements TJC
+          </p>
         </div>
-        <div className="flex space-x-3">
-          <Button variant="outline" size="sm">
-            <Filter className="w-4 h-4 mr-2" />
-            Filtrer
-          </Button>
-          <Button className="bg-blue-600 hover:bg-blue-700">
-            <Plus className="w-4 h-4 mr-2" />
-            Nouvel Événement
-          </Button>
+        
+        {permissions?.canManageEvents && (
+          <div className="flex space-x-3">
+            <Link
+              to="/dashboard/calendar/new"
+              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
+            >
+              <Plus className="h-4 w-4" />
+              <span>Nouvel événement</span>
+            </Link>
+          </div>
+        )}
+      </div>
+
+      {/* Stats rapides */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="bg-white p-4 rounded-lg border">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-600">Aujourd'hui</p>
+              <p className="text-xl font-bold text-blue-600">{todaysEvents.length}</p>
+            </div>
+            <Clock className="h-8 w-8 text-blue-600" />
+          </div>
+        </div>
+        
+        <div className="bg-white p-4 rounded-lg border">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-600">À venir (7j)</p>
+              <p className="text-xl font-bold text-green-600">
+                {upcomingEvents.filter(e => {
+                  const eventDate = new Date(e.date);
+                  const weekFromNow = new Date();
+                  weekFromNow.setDate(weekFromNow.getDate() + 7);
+                  return eventDate <= weekFromNow;
+                }).length}
+              </p>
+            </div>
+            <Calendar className="h-8 w-8 text-green-600" />
+          </div>
+        </div>
+        
+        <div className="bg-white p-4 rounded-lg border">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-600">Courses ce mois</p>
+              <p className="text-xl font-bold text-purple-600">
+                {filteredEvents.filter(e => 
+                  e.type === 'race' && 
+                  new Date(e.date).getMonth() === new Date().getMonth()
+                ).length}
+              </p>
+            </div>
+            <Trophy className="h-8 w-8 text-purple-600" />
+          </div>
+        </div>
+        
+        <div className="bg-white p-4 rounded-lg border">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-600">Participants total</p>
+              <p className="text-xl font-bold text-orange-600">
+                {filteredEvents.reduce((sum, e) => sum + (e.participants || 0), 0)}
+              </p>
+            </div>
+            <Users className="h-8 w-8 text-orange-600" />
+          </div>
         </div>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-          <div className="flex items-center">
-            <Calendar className="h-6 w-6 text-blue-600" />
-            <div className="ml-3">
-              <p className="text-xs font-medium text-gray-600">Total Événements</p>
-              <p className="text-xl font-bold text-gray-900">{stats.totalEvents}</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-          <div className="flex items-center">
-            <Trophy className="h-6 w-6 text-yellow-600" />
-            <div className="ml-3">
-              <p className="text-xs font-medium text-gray-600">Courses</p>
-              <p className="text-xl font-bold text-gray-900">{stats.courses}</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-          <div className="flex items-center">
-            <Users className="h-6 w-6 text-blue-600" />
-            <div className="ml-3">
-              <p className="text-xs font-medium text-gray-600">Entraînements</p>
-              <p className="text-xl font-bold text-gray-900">{stats.entrainements}</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-          <div className="flex items-center">
-            <Plus className="h-6 w-6 text-green-600" />
-            <div className="ml-3">
-              <p className="text-xs font-medium text-gray-600">Médical</p>
-              <p className="text-xl font-bold text-gray-900">{stats.medical}</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-          <div className="flex items-center">
-            <Users className="h-6 w-6 text-purple-600" />
-            <div className="ml-3">
-              <p className="text-xs font-medium text-gray-600">Participants</p>
-              <p className="text-xl font-bold text-gray-900">{stats.totalParticipants}</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-          <div className="flex items-center">
-            <div className="h-6 w-6 text-green-600 flex items-center justify-center text-sm font-bold">TND</div>
-            <div className="ml-3">
-              <p className="text-xs font-medium text-gray-600">Prix Total</p>
-              <p className="text-lg font-bold text-gray-900">{(stats.totalPrize / 1000).toFixed(0)}K</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Calendar Navigation */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-        <div className="flex items-center justify-between">
+      {/* Contrôles de vue */}
+      <div className="bg-white rounded-lg border p-4">
+        <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center space-x-4">
-            <Button variant="outline" size="sm">
-              <ChevronLeft className="w-4 h-4" />
-            </Button>
-            <h2 className="text-xl font-semibold text-gray-900 capitalize">
-              {currentMonth}
-            </h2>
-            <Button variant="outline" size="sm">
-              <ChevronRight className="w-4 h-4" />
-            </Button>
-          </div>
-          <div className="flex items-center space-x-2">
-            <select className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm">
-              <option>Tous les événements</option>
-              <option>Courses</option>
-              <option>Entraînements</option>
-              <option>Médical</option>
-            </select>
-            <Button variant="outline" size="sm">
-              Vue mois
-            </Button>
-            <Button variant="outline" size="sm">
-              Vue semaine
-            </Button>
-          </div>
-        </div>
-      </div>
-
-      {/* Timeline View */}
-      <div className="space-y-6">
-        {sortedDates.map((date) => (
-          <div key={date} className="space-y-4">
-            {/* Date Header */}
-            <div className="flex items-center space-x-4">
-              <div className="bg-blue-600 text-white rounded-lg px-4 py-2 text-center min-w-[120px]">
-                <div className="text-lg font-bold">
-                  {new Date(date).getDate()}
-                </div>
-                <div className="text-sm">
-                  {new Date(date).toLocaleDateString('fr-FR', { 
-                    weekday: 'short', 
-                    month: 'short' 
-                  })}
-                </div>
-              </div>
-              <div className="flex-1 h-px bg-gray-200"></div>
-              <span className="text-sm text-gray-500">
-                {eventsByDate[date].length} événement{eventsByDate[date].length > 1 ? 's' : ''}
-              </span>
+            <div className="flex items-center space-x-2">
+              <Filter className="h-4 w-4 text-gray-500" />
+              <select
+                value={filterType}
+                onChange={(e) => setFilterType(e.target.value as any)}
+                className="border rounded px-3 py-1 text-sm"
+              >
+                <option value="all">Tous les événements</option>
+                <option value="races">Courses uniquement</option>
+                <option value="events">Autres événements</option>
+              </select>
             </div>
-
-            {/* Events for this date */}
-            <div className="ml-4 space-y-3">
-              {eventsByDate[date].map((event) => (
-                <div
-                  key={event.id}
-                  className={`border-l-4 ${getTypeColor(event.type)} rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow`}
+            
+            <div className="flex rounded-lg border">
+              {(['list', 'month', 'week'] as const).map((type) => (
+                <button
+                  key={type}
+                  onClick={() => setViewType(type)}
+                  className={`px-3 py-1 text-sm ${
+                    viewType === type
+                      ? 'bg-blue-100 text-blue-700'
+                      : 'text-gray-600 hover:bg-gray-50'
+                  }`}
                 >
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-3 mb-2">
-                        {getEventTypeIcon(event.type)}
-                        <h3 className="text-lg font-semibold text-gray-900">
-                          {event.title}
-                        </h3>
-                        {getStatusBadge(event.status)}
-                      </div>
-                      
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm text-gray-600">
-                        <div className="flex items-center space-x-2">
-                          <Clock className="w-4 h-4" />
-                          <span>{event.time}</span>
-                        </div>
-                        
-                        <div className="flex items-center space-x-2">
-                          <MapPin className="w-4 h-4" />
-                          <span>{event.venue}</span>
-                        </div>
-                        
-                        <div className="flex items-center space-x-2">
-                          <Users className="w-4 h-4" />
-                          <span>{event.participants} participants</span>
-                        </div>
-
-                        {event.prize && (
-                          <div className="flex items-center space-x-2">
-                            <Trophy className="w-4 h-4 text-yellow-600" />
-                            <span className="text-green-600 font-medium">{event.prize}</span>
-                          </div>
-                        )}
-                      </div>
-
-                      {event.distance && (
-                        <div className="mt-2">
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                            {event.category} • {event.distance}
-                          </span>
-                          {event.weather && (
-                            <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                              ☀️ {event.weather}
-                            </span>
-                          )}
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="flex space-x-2">
-                      <Button variant="outline" size="sm">
-                        Modifier
-                      </Button>
-                      <Button variant="outline" size="sm">
-                        Détails
-                      </Button>
-                    </div>
-                  </div>
-                </div>
+                  {type === 'list' ? 'Liste' : type === 'month' ? 'Mois' : 'Semaine'}
+                </button>
               ))}
             </div>
           </div>
-        ))}
+          
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={() => {
+                const newDate = new Date(currentDate);
+                newDate.setMonth(newDate.getMonth() - 1);
+                setCurrentDate(newDate);
+              }}
+              className="p-1 text-gray-500 hover:bg-gray-100 rounded"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <span className="text-sm font-medium min-w-32 text-center">
+              {currentDate.toLocaleDateString('fr-FR', { 
+                month: 'long', 
+                year: 'numeric' 
+              })}
+            </span>
+            <button
+              onClick={() => {
+                const newDate = new Date(currentDate);
+                newDate.setMonth(newDate.getMonth() + 1);
+                setCurrentDate(newDate);
+              }}
+              className="p-1 text-gray-500 hover:bg-gray-100 rounded"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
       </div>
 
-      {/* Quick Actions */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div className="bg-gradient-to-br from-yellow-50 to-yellow-100 rounded-xl p-6 border border-yellow-200">
-          <div className="flex items-start space-x-4">
-            <div className="flex-shrink-0">
-              <Trophy className="h-8 w-8 text-yellow-600" />
-            </div>
-            <div className="flex-1">
-              <h3 className="text-lg font-semibold text-yellow-900 mb-2">Nouvelle Course</h3>
-              <p className="text-sm text-yellow-700 mb-4">Programmer une course officielle</p>
-              <Button size="sm" className="bg-yellow-600 hover:bg-yellow-700 text-white">
-                <Plus className="w-4 h-4 mr-1" />
-                Créer
-              </Button>
-            </div>
+      {/* Events à venir (urgents) */}
+      {todaysEvents.length > 0 && (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+          <div className="flex items-center mb-3">
+            <AlertCircle className="h-5 w-5 text-yellow-600 mr-2" />
+            <h3 className="font-medium text-yellow-800">Événements aujourd'hui</h3>
+          </div>
+          <div className="space-y-2">
+            {todaysEvents.map((event) => (
+              <div key={event.id} className="flex items-center justify-between bg-white rounded p-3">
+                <div className="flex items-center space-x-3">
+                  <span className={`px-2 py-1 rounded text-xs font-medium ${getEventTypeColor(event.type)}`}>
+                    {event.type === 'race' ? 'Course' : 
+                     event.type === 'meeting' ? 'Réunion' :
+                     event.type === 'training' ? 'Formation' :
+                     event.type === 'inspection' ? 'Inspection' : event.type}
+                  </span>
+                  <div>
+                    <p className="font-medium text-gray-900">{event.title}</p>
+                    <p className="text-sm text-gray-600 flex items-center">
+                      <Clock className="h-3 w-3 mr-1" />
+                      {event.time} - {event.location}
+                    </p>
+                  </div>
+                </div>
+                <Link
+                  to={`/dashboard/calendar/event/${event.id}`}
+                  className="text-blue-600 hover:bg-blue-100 p-1 rounded"
+                >
+                  <Eye className="h-4 w-4" />
+                </Link>
+              </div>
+            ))}
           </div>
         </div>
+      )}
 
-        <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-6 border border-blue-200">
-          <div className="flex items-start space-x-4">
-            <div className="flex-shrink-0">
-              <Users className="h-8 w-8 text-blue-600" />
-            </div>
-            <div className="flex-1">
-              <h3 className="text-lg font-semibold text-blue-900 mb-2">Entraînement</h3>
-              <p className="text-sm text-blue-700 mb-4">Planifier une session d'entraînement</p>
-              <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white">
-                <Plus className="w-4 h-4 mr-1" />
-                Planifier
-              </Button>
-            </div>
-          </div>
+      {/* Liste des événements */}
+      <div className="bg-white rounded-lg border overflow-hidden">
+        <div className="p-4 bg-gray-50 border-b">
+          <h3 className="text-lg font-semibold text-gray-900">
+            Événements à venir ({upcomingEvents.length})
+          </h3>
         </div>
-
-        <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-6 border border-green-200">
-          <div className="flex items-start space-x-4">
-            <div className="flex-shrink-0">
-              <Plus className="h-8 w-8 text-green-600" />
+        
+        <div className="divide-y divide-gray-200">
+          {upcomingEvents.slice(0, 10).map((event) => (
+            <div key={event.id} className={`p-4 border-l-4 ${getPriorityColor(event.priority)} hover:bg-gray-50`}>
+              <div className="flex items-center justify-between">
+                <div className="flex-1">
+                  <div className="flex items-center space-x-3 mb-2">
+                    <span className={`px-2 py-1 rounded text-xs font-medium ${getEventTypeColor(event.type)}`}>
+                      {event.type === 'race' ? 'Course' : 
+                       event.type === 'meeting' ? 'Réunion' :
+                       event.type === 'training' ? 'Formation' :
+                       event.type === 'inspection' ? 'Inspection' : event.type}
+                    </span>
+                    <span className={`text-xs font-medium ${getStatusColor(event.status)}`}>
+                      {event.status === 'confirmed' ? 'Confirmé' :
+                       event.status === 'planning' ? 'Planifié' :
+                       event.status === 'cancelled' ? 'Annulé' : event.status}
+                    </span>
+                  </div>
+                  
+                  <h4 className="font-semibold text-gray-900 mb-1">{event.title}</h4>
+                  
+                  <div className="flex items-center space-x-4 text-sm text-gray-600">
+                    <div className="flex items-center">
+                      <Clock className="h-4 w-4 mr-1" />
+                      {formatEventTime(event.date, event.time)}
+                    </div>
+                    <div className="flex items-center">
+                      <MapPin className="h-4 w-4 mr-1" />
+                      {event.location}
+                    </div>
+                    <div className="flex items-center">
+                      <Users className="h-4 w-4 mr-1" />
+                      {event.participants} participants
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="flex items-center space-x-2">
+                  <Link
+                    to={`/dashboard/calendar/event/${event.id}`}
+                    className="p-2 text-blue-600 hover:bg-blue-100 rounded"
+                    title="Voir détails"
+                  >
+                    <Eye className="h-4 w-4" />
+                  </Link>
+                  {permissions?.canManageEvents && (
+                    <Link
+                      to={`/dashboard/calendar/event/${event.id}/edit`}
+                      className="p-2 text-gray-600 hover:bg-gray-100 rounded"
+                      title="Modifier"
+                    >
+                      <Settings className="h-4 w-4" />
+                    </Link>
+                  )}
+                </div>
+              </div>
             </div>
-            <div className="flex-1">
-              <h3 className="text-lg font-semibold text-green-900 mb-2">Visite Médicale</h3>
-              <p className="text-sm text-green-700 mb-4">Programmer un suivi vétérinaire</p>
-              <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white">
-                <Plus className="w-4 h-4 mr-1" />
-                Programmer
-              </Button>
-            </div>
-          </div>
+          ))}
         </div>
-
-        <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-6 border border-purple-200">
-          <div className="flex items-start space-x-4">
-            <div className="flex-shrink-0">
-              <Calendar className="h-8 w-8 text-purple-600" />
-            </div>
-            <div className="flex-1">
-              <h3 className="text-lg font-semibold text-purple-900 mb-2">Autre Événement</h3>
-              <p className="text-sm text-purple-700 mb-4">Créer un événement personnalisé</p>
-              <Button size="sm" className="bg-purple-600 hover:bg-purple-700 text-white">
-                <Plus className="w-4 h-4 mr-1" />
-                Créer
-              </Button>
-            </div>
+        
+        {upcomingEvents.length === 0 && (
+          <div className="p-8 text-center text-gray-500">
+            <Calendar className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+            <p>Aucun événement planifié</p>
+            {permissions?.canManageEvents && (
+              <Link
+                to="/dashboard/calendar/new"
+                className="text-blue-600 hover:text-blue-700 text-sm"
+              >
+                Créer le premier événement
+              </Link>
+            )}
           </div>
-        </div>
+        )}
       </div>
     </div>
   );

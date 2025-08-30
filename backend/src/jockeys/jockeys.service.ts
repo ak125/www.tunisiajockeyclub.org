@@ -1,6 +1,6 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { AdvancedCacheService } from '../cache/cache.service';
+import { AdvancedCacheService } from '../cache/advanced-cache.service';
 import { Prisma } from '@prisma/client';
 
 @Injectable()
@@ -78,8 +78,15 @@ export class JockeysService {
         };
       } else if (sortBy === 'wins') {
         orderBy.wins = sortOrder;
+      } else if (sortBy === 'licenseNumber') {
+        orderBy.licenseNumber = sortOrder;
+      } else if (sortBy === 'places') {
+        orderBy.places = sortOrder;
+      } else if (sortBy === 'shows') {
+        orderBy.shows = sortOrder;
       } else {
-        orderBy[sortBy] = sortOrder;
+        // Fallback vers licenseNumber si le champ n'est pas reconnu
+        orderBy.licenseNumber = sortOrder;
       }
 
       // Récupération des jockeys avec les informations utilisateur
@@ -298,7 +305,7 @@ export class JockeysService {
           date: entry.race.raceDate,
           racecourse: entry.race.racecourse.name,
           horse: entry.horse.name,
-          position: entry.position,
+          clothNumber: entry.clothNumber,
         })),
         recentResults: jockey.raceResults.map((result) => ({
           id: result.race.id,

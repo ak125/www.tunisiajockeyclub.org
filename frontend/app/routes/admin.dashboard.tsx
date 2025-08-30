@@ -138,22 +138,22 @@ function DashboardHeader() {
 function KPISection({ stats }: { stats: any }) {
   const kpiData = [
     { 
-      number: stats.totalRaces, 
+      number: stats.totalRaces || 0, 
       label: 'Courses Organisées',
       growth: '+12%'
     },
     { 
-      number: stats.activeHorses, 
+      number: stats.activeHorses || 0, 
       label: 'Chevaux Actifs',
       growth: '+8%'
     },
     { 
-      number: stats.registeredJockeys, 
+      number: stats.registeredJockeys || 0, 
       label: 'Jockeys Licenciés',
       growth: '+5%'
     },
     { 
-      number: stats.averageRating.toFixed(1), 
+      number: stats.averageRating ? stats.averageRating.toFixed(1) : '0.0', 
       label: 'Rating IFHA Moyen',
       growth: '+3.2'
     }
@@ -189,6 +189,11 @@ function KPISection({ stats }: { stats: any }) {
 
 // Section Graphiques Analytiques
 function AnalyticsSection({ monthlyData, horsePerformance, raceTypes }: any) {
+  // Protection contre les données undefined
+  const safeMonthlyData = monthlyData || [];
+  const safeHorsePerformance = horsePerformance || [];
+  const safeRaceTypes = raceTypes || [];
+
   return (
     <Section background="default">
       <Container>
@@ -204,7 +209,7 @@ function AnalyticsSection({ monthlyData, horsePerformance, raceTypes }: any) {
             
             <div style={{ width: '100%', height: '300px' }}>
               <ResponsiveContainer>
-                <LineChart data={monthlyData}>
+                <LineChart data={safeMonthlyData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
                   <XAxis 
                     dataKey="mois" 
@@ -251,7 +256,7 @@ function AnalyticsSection({ monthlyData, horsePerformance, raceTypes }: any) {
             
             <div style={{ width: '100%', height: '300px' }}>
               <ResponsiveContainer>
-                <BarChart data={horsePerformance} layout="horizontal">
+                <BarChart data={safeHorsePerformance} layout="horizontal">
                   <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
                   <XAxis type="number" stroke="#64748B" fontSize={12} />
                   <YAxis 
@@ -291,7 +296,7 @@ function AnalyticsSection({ monthlyData, horsePerformance, raceTypes }: any) {
               <ResponsiveContainer>
                 <PieChart>
                   <Pie
-                    data={raceTypes}
+                    data={safeRaceTypes}
                     dataKey="nombre"
                     nameKey="type"
                     cx="50%"
@@ -299,7 +304,7 @@ function AnalyticsSection({ monthlyData, horsePerformance, raceTypes }: any) {
                     outerRadius={80}
                     label={({ type, nombre }) => `${type}: ${nombre}`}
                   >
-                    {raceTypes.map((entry: any, index: number) => (
+                    {safeRaceTypes.map((entry: any, index: number) => (
                       <Cell key={`cell-${index}`} fill={entry.couleur} />
                     ))}
                   </Pie>

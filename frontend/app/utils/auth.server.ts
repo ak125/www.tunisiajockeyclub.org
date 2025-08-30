@@ -1,161 +1,386 @@
-import { createCookieSessionStorage, redirect } from "@remix-run/node";
-import bcrypt from "bcryptjs";
+import { redirect, type AppLoadContext } from '@remix-run/node';
+import { getSession, destroySession, commitSession } from './session.server';
+import { z } from 'zod';
 
-// Configuration de session
-const sessionSecret = process.env.SESSION_SECRET || "default-secret-for-dev";
-if (sessionSecret === "default-secret-for-dev" && process.env.NODE_ENV === "production") {
-  throw new Error("Vous devez définir une SESSION_SECRET en production");
-}
-
-const { getSession, commitSession, destroySession } = createCookieSessionStorage({
-  cookie: {
-    name: "tjc_session",
-    secure: process.env.NODE_ENV === "production",
-    secrets: [sessionSecret],
-    sameSite: "lax",
-    path: "/",
-    maxAge: 60 * 60 * 24 * 7, // 7 jours
-    httpOnly: true,
-  },
+// Schema de validation pour l'utilisateur authentifié
+const authenticatedUserSchema = z.object({
+  id: z.string().optional(),
+  email: z.string(),
+  name: z.string().optional(),
+  firstName: z.string().optional(),
+  lastName: z.string().optional(),
+  sessionToken: z.string().optional(),
 });
 
-// Types d'utilisateur
 export interface User {
-  id: string;
-  username: string;
+  id?: string;
   email: string;
-  role: 'super_admin' | 'admin' | 'manager' | 'viewer';
-  firstName: string;
-  lastName: string;
-  lastLogin?: string;
-  isActive: boolean;
+  name?: string;
+  firstName?: string;
+  lastName?: string;
+  sessionToken?: string;
 }
 
-// Base de données simulée des administrateurs (en production, utiliser Supabase)
-const ADMIN_USERS: Record<string, { 
-  password: string; 
-  user: Omit<User, 'lastLogin'>; 
-}> = {
-  "admin": {
-    password: "$2a$10$8K1.zWzGXvGlqPEcFqxL7O8K2pZz8fKs4jCc9VrQhKtGlW2V4Z0QG", // "admin123"
-    user: {
-      id: "1",
-      username: "admin",
-      email: "admin@jockeyclub.tn",
-      role: "super_admin",
-      firstName: "Administrateur",
-      lastName: "Système",
-      isActive: true
-    }
-  },
-  "manager": {
-    password: "$2a$10$8K1.zWzGXvGlqPEcFqxL7O8K2pZz8fKs4jCc9VrQhKtGlW2V4Z0QG", // "manager123"
-    user: {
-      id: "2", 
-      username: "manager",
-      email: "manager@jockeyclub.tn",
-      role: "manager",
-      firstName: "Gestionnaire",
-      lastName: "Principal",
-      isActive: true
-    }
-  }
-};
-
-// Authentification
-export async function authenticate(username: string, password: string): Promise<User | null> {
-  const adminData = ADMIN_USERS[username.toLowerCase()];
-  
-  if (!adminData || !adminData.user.isActive) {
-    return null;
-  }
-
-  const isValid = await bcrypt.compare(password, adminData.password);
-  if (!isValid) {
-    return null;
-  }
-
-  return {
-    ...adminData.user,
-    lastLogin: new Date().toISOString()
+export interface AuthResponse {
+  success: boolean;
+  message?: string;
+  user?: User;
+  source?: string;
+  performance?: {
+    duration: number;
+    mode: string;
   };
+  timestamp?: string;
 }
 
-// Gestion des sessions
-export async function createUserSession(user: User, redirectTo: string = "/executive") {
-  const session = await getSession();
-  session.set("userId", user.id);
-  session.set("userRole", user.role);
-  session.set("lastActivity", Date.now());
+// Configuration de l'API backend
+const API_BASE_URL = process.env.API_BASE_URL || 'http://localhost:3000';
+
+// ==========================================
+// FONCTIONS CORE D'AUTHENTIFICATION
+// ==========================================
+
+/**
+ * Authentifier un utilisateur via le backend NestJS
+ */
+export async function authenticate(email: string, password: string): Promise<User | null> {
+  try {
+    console.log(`🔐 Authentification tentée pour: ${email}`);
+    
+    const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email, password }),
+    });
+
+    const result: AuthResponse = await response.json();
+    console.log(`📋 Réponse auth backend:`, result);
+
+    if (result.success && result.user) {
+      console.log(`✅ Authentification réussie pour: ${email} (${result.source})`);
+      return result.user;
+    }
+    
+    console.log(`❌ Échec authentification pour: ${email} - ${result.message}`);
+    return null;
+  } catch (error) {
+    console.error('❌ Erreur authentification:', error);
+    return null;
+  }
+}
+
+/**
+ * Vérifier et valider les informations d'un utilisateur
+ */
+function validateUser(userData: unknown): User | null {
+  try {
+    const validatedUser = authenticatedUserSchema.parse(userData);
+    return {
+      id: validatedUser.id,
+      email: validatedUser.email,
+      name: validatedUser.name || validatedUser.firstName || '',
+      firstName: validatedUser.firstName || validatedUser.name,
+      lastName: validatedUser.lastName,
+      sessionToken: validatedUser.sessionToken,
+    };
+  } catch (error) {
+    console.warn('⚠️ Données utilisateur invalides:', error);
+    return null;
+  }
+}
+
+// ==========================================
+// GESTION DES SESSIONS
+// ==========================================
+
+/**
+ * Récupérer l'utilisateur depuis la session Remix
+ */
+export async function getUserFromSession(request: Request): Promise<User | null> {
+  try {
+    const session = await getSession(request.headers.get('Cookie'));
+    const userData = session.get('user');
+    
+    if (!userData) {
+      return null;
+    }
+
+    return validateUser(userData);
+  } catch (error) {
+    console.error('Erreur récupération session utilisateur:', error);
+    return null;
+  }
+}
+
+/**
+ * Récupérer l'utilisateur depuis le contexte (pour compatibility)
+ */
+export async function getUserFromContext(context: AppLoadContext): Promise<User | null> {
+  try {
+    const sessionUser = context?.session?.get('user');
+    if (!sessionUser) {
+      return null;
+    }
+    return validateUser(sessionUser);
+  } catch (error) {
+    console.error('Erreur récupération contexte utilisateur:', error);
+    return null;
+  }
+}
+
+/**
+ * Créer une session utilisateur après authentification
+ */
+export async function createUserSession({
+  request,
+  userId,
+  user,
+  redirectTo,
+  remember = false,
+}: {
+  request: Request;
+  userId?: string;
+  user?: User;
+  redirectTo: string;
+  remember?: boolean;
+}) {
+  const session = await getSession(request.headers.get('Cookie'));
   
+  // Utiliser user si fourni, sinon créer un objet basique avec userId
+  const userData: User = user || { 
+    id: userId, 
+    email: '', 
+    name: '',
+    sessionToken: `session_${Date.now()}`
+  };
+  
+  session.set('user', userData);
+
   return redirect(redirectTo, {
     headers: {
-      "Set-Cookie": await commitSession(session),
+      'Set-Cookie': await commitSession(session, {
+        maxAge: remember ? 60 * 60 * 24 * 7 : undefined, // 7 jours si remember
+      }),
     },
   });
 }
 
-export async function getUserFromSession(request: Request): Promise<User | null> {
-  const session = await getSession(request.headers.get("Cookie"));
-  const userId = session.get("userId");
-  const lastActivity = session.get("lastActivity");
-  
-  if (!userId) return null;
+// ==========================================
+// FONCTIONS DE CONTRÔLE D'ACCÈS
+// ==========================================
 
-  // Vérifier l'expiration de session (2 heures d'inactivité)
-  if (lastActivity && Date.now() - lastActivity > 2 * 60 * 60 * 1000) {
-    return null;
+/**
+ * Obtenir l'utilisateur optionnel (compatible avec les deux systèmes)
+ */
+export async function getOptionalUser(
+  requestOrContext: Request | { context: AppLoadContext }
+): Promise<User | null> {
+  if (requestOrContext instanceof Request) {
+    return getUserFromSession(requestOrContext);
+  } else if ('context' in requestOrContext) {
+    return getUserFromContext(requestOrContext.context);
+  } else {
+    // Fallback pour compatibilité
+    return getUserFromSession(requestOrContext as Request);
   }
-
-  // Trouver l'utilisateur (en production, requête à Supabase)
-  for (const adminData of Object.values(ADMIN_USERS)) {
-    if (adminData.user.id === userId && adminData.user.isActive) {
-      return {
-        ...adminData.user,
-        lastLogin: new Date().toISOString()
-      };
-    }
-  }
-
-  return null;
 }
 
-export async function requireAuth(request: Request, allowedRoles?: User['role'][]): Promise<User> {
+/**
+ * Exiger une authentification (pour Request)
+ */
+export async function requireAuth(request: Request): Promise<User> {
   const user = await getUserFromSession(request);
-  
   if (!user) {
-    throw redirect("/login");
+    throw redirect('/login');
   }
-
-  if (allowedRoles && !allowedRoles.includes(user.role)) {
-    throw redirect("/executive?error=unauthorized");
-  }
-
   return user;
 }
 
+/**
+ * Exiger une authentification (pour Context)
+ */
+export async function requireUser(context: { context: AppLoadContext }): Promise<User> {
+  const user = await getUserFromContext(context.context);
+  if (!user) {
+    throw redirect('/login');
+  }
+  return user;
+}
+
+// ==========================================
+// HIGHER-ORDER FUNCTIONS POUR SÉCURITÉ
+// ==========================================
+
+/**
+ * Créer un loader sécurisé qui vérifie l'authentification
+ */
+export function createSecureLoader<T>(
+  loaderFn: (args: { request: Request; user: User }) => T | Promise<T>
+) {
+  return async ({ request }: { request: Request }) => {
+    const user = await requireAuth(request);
+    return loaderFn({ request, user });
+  };
+}
+
+/**
+ * Créer un loader sécurisé spécifique pour les ratings
+ */
+export function createRatingSecureLoader<T>(
+  loaderFn: (args: { request: Request; user: User }) => T | Promise<T>
+) {
+  return createSecureLoader(loaderFn);
+}
+
+/**
+ * Créer un action sécurisé qui vérifie l'authentification
+ */
+export function createSecureAction<T>(
+  actionFn: (args: { request: Request; user: User }) => T | Promise<T>
+) {
+  return async ({ request }: { request: Request }) => {
+    const user = await requireAuth(request);
+    return actionFn({ request, user });
+  };
+}
+
+// ==========================================
+// GESTION DES PERMISSIONS
+// ==========================================
+
+export enum Permission {
+  READ = 'read',
+  WRITE = 'write',
+  ADMIN = 'admin',
+  RATING = 'rating',
+  COURSES = 'courses',
+  HORSES = 'horses',
+  TOURNAMENTS = 'tournaments',
+  JOCKEYS = 'jockeys',
+  ANALYTICS = 'analytics',
+}
+
+/**
+ * Vérifier les permissions d'un utilisateur
+ */
+export function hasPermission(user: User | null, permission: Permission | string): boolean {
+  if (!user) return false;
+  
+  // Pour l'instant, tous les utilisateurs connectés ont toutes les permissions
+  // TODO: Implémenter un système de rôles plus sophistiqué
+  return true;
+}
+
+/**
+ * Exiger une permission spécifique
+ */
+export async function requirePermission(
+  request: Request, 
+  permission: Permission | string
+): Promise<User> {
+  const user = await requireAuth(request);
+  
+  if (!hasPermission(user, permission)) {
+    throw redirect('/unauthorized');
+  }
+  
+  return user;
+}
+
+// ==========================================
+// DÉCONNEXION
+// ==========================================
+
+/**
+ * Déconnecter l'utilisateur et détruire la session
+ */
 export async function logout(request: Request) {
-  const session = await getSession(request.headers.get("Cookie"));
-  return redirect("/login", {
+  const session = await getSession(request.headers.get('Cookie'));
+  
+  // Optionnel: Notifier le backend de la déconnexion
+  try {
+    await fetch(`${API_BASE_URL}/api/auth/logout`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+  } catch (error) {
+    console.warn('Avertissement: Impossible de notifier le backend de la déconnexion:', error);
+  }
+  
+  return redirect('/login', {
     headers: {
-      "Set-Cookie": await destroySession(session),
+      'Set-Cookie': await destroySession(session),
     },
   });
 }
 
-// Vérification des permissions
-export function hasPermission(user: User, action: string): boolean {
-  const permissions = {
-    super_admin: ['read', 'write', 'delete', 'manage_users', 'system_config', 'export_data'],
-    admin: ['read', 'write', 'delete', 'export_data'],
-    manager: ['read', 'write', 'export_data'],
-    viewer: ['read']
-  };
+// ==========================================
+// UTILITAIRES AVANCÉS
+// ==========================================
 
-  return permissions[user.role]?.includes(action) || false;
+/**
+ * Vérifier si l'utilisateur a une session valide
+ */
+export async function isAuthenticated(request: Request): Promise<boolean> {
+  const user = await getUserFromSession(request);
+  return user !== null;
 }
 
-// Hash password utility (pour créer de nouveaux utilisateurs)
-export async function hashPassword(password: string): Promise<string> {
-  return bcrypt.hash(password, 10);
+/**
+ * Obtenir les informations de session pour le debugging
+ */
+export async function getSessionInfo(request: Request): Promise<{
+  hasSession: boolean;
+  user?: User;
+  sessionAge?: number;
+}> {
+  const session = await getSession(request.headers.get('Cookie'));
+  const user = await getUserFromSession(request);
+  
+  return {
+    hasSession: !!user,
+    user: user || undefined,
+  };
+}
+
+/**
+ * Rafraîchir la session utilisateur depuis le backend
+ */
+export async function refreshUserSession(request: Request): Promise<User | null> {
+  const currentUser = await getUserFromSession(request);
+  if (!currentUser?.email) {
+    return null;
+  }
+
+  try {
+    // Vérifier avec le backend si l'utilisateur est toujours valide
+    const response = await fetch(`${API_BASE_URL}/api/auth/check`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ 
+        email: currentUser.email,
+        sessionToken: currentUser.sessionToken 
+      }),
+    });
+
+    const result = await response.json();
+    
+    if (result.success && result.user) {
+      // Mettre à jour la session avec les nouvelles informations
+      const session = await getSession(request.headers.get('Cookie'));
+      session.set('user', result.user);
+      await commitSession(session);
+      return result.user;
+    }
+  } catch (error) {
+    console.warn('Impossible de rafraîchir la session:', error);
+  }
+  
+  return currentUser;
 }

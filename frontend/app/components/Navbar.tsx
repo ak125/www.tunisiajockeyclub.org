@@ -109,7 +109,7 @@ export const Navbar = ({ logo }: { logo: string }) => {
                       }
                     </span>
                   </div>
-                  <Form method="post" action="/auth/logout">
+                  <Form method="post" action="/logout">
                     <button
                       type="submit"
                       className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 shadow-sm hover:shadow-md"
