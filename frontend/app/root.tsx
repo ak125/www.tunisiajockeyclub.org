@@ -1,14 +1,13 @@
 import { type RemixService } from "@fafa/backend";
 import { type LinksFunction, type LoaderFunctionArgs, json } from "@remix-run/node";
 import { Links, Meta, Outlet, Scripts, ScrollRestoration, useRouteLoaderData } from "@remix-run/react";
+import { Toaster } from "react-hot-toast";
 import { Footer } from "./components/Footer";
 import { MainLayout } from "./components/layout/MainLayout";
-import { QueryProvider } from "./shared/providers/QueryProvider";
 import { ErrorBoundary as AppErrorBoundary } from "./shared/components/ErrorBoundary";
-import { Toaster } from "react-hot-toast";
+import { QueryProvider } from "./shared/providers/QueryProvider";
 import "./global.css";
 import "./styles/design-system.css";
-import logo from "./routes/_assets/logo-automecanik-dark.png";
 import { getOptionalUser } from "./utils/auth.server";
 
 export const links: LinksFunction = () => [];

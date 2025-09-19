@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Outlet } from "@remix-run/react";
 import { Menu, X } from "lucide-react";
-import { Sidebar } from "./Sidebar";
+import { SidebarPremium } from "./SidebarPremium";
 import { Navbar } from "../Navbar";
 import { Header } from "../Header";
 
@@ -53,7 +53,7 @@ export function MainLayout({
             />
             
             {/* Spacer pour desktop pour compenser la sidebar fixe */}
-            <div className="w-72 flex-shrink-0" />
+            <div className="w-80 flex-shrink-0" />
           </>
         )}
         

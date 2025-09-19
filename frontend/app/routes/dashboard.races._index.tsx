@@ -159,7 +159,7 @@ export default function DashboardRaces() {
             <div>
               <p className="text-sm text-gray-600">Participants total</p>
               <p className="text-xl font-bold text-purple-600">
-                {sampleRaces.reduce((sum, r) => sum + r.participants, 0)}
+                {sampleRaces.reduce((sum, r) => sum + (r.participants || r.participantCount || 0), 0)}
               </p>
             </div>
             <Users className="h-8 w-8 text-purple-600" />
@@ -237,7 +237,7 @@ export default function DashboardRaces() {
                   </div>
                   <div className="flex items-center">
                     <Users className="h-4 w-4 mr-2 text-gray-400" />
-                    {race.participants || 0} participants
+                    {race.participants || race.participantCount || 0} participants
                   </div>
                 </div>
               </div>

@@ -1,5 +1,8 @@
 import { Link, Form, useLocation } from "@remix-run/react";
-import { motion } from "framer-motion";
+import GlobalSearch from "./search/GlobalSearch";
+import DetailedProfile from "./profile/DetailedProfile";
+import { useOptionalUser } from "~/root";
+import { motion, AnimatePresence } from "framer-motion";
 import { useState } from "react";
 import { 
   Home, 
@@ -7,16 +10,19 @@ import {
   Calendar, 
   Trophy, 
   Users,
-  Settings,
   LogOut,
   Search,
   Calculator,
-  Award,
-  Star
+  Crown,
+  Sparkles,
+  Bell,
+  Menu,
+  X,
+  ChevronDown,
+  Zap,
+  Eye,
+  Globe
 } from "lucide-react";
-import { useOptionalUser } from "~/root";
-import GlobalSearch from "./search/GlobalSearch";
-import DetailedProfile from "./profile/DetailedProfile";
 
 interface SearchResult {
   id: string;
